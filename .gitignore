@@ -102,3 +102,22 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+
+
+# dirs to ignore
+steps/**
+results/**
+data/**
+figures/**
+docs/**
+plots/**
+trash/**
+
+old*
+
+.gwf*
+
+# but not README.md
+!**/README.md
+
