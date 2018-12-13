@@ -1,0 +1,56 @@
+initialize() {
+	initializeTreeSeq();
+	initializeMutationRate(0);
+   initializeMutationType("m1", 0.5, "f", 0.0);
+	initializeMutationType("m2", 1.0, "f", s);        // introduced
+   initializeGenomicElementType("g1", m1, 1.0);
+ 	initializeGenomicElement(g1, 0, 3e6-1);
+	initializeRecombinationRate(1e-8);
+}
+// 200,000 BP
+1 {
+	defineConstant("simID", getSeed());
+	sim.addSubpop("p1", 30000);
+}
+// sweep 50,000 BP
+5172 late() {
+	target = sample(p1.genomes, 1);
+	target.addNewDrawnMutation(m2, 1000000);
+	sim.outputFull("/tmp/slim_" + simID + ".txt");
+}
+5172:6896 late() {
+	if (sim.countOfMutationsOfType(m2) == 0 & sum(sim.substitutions.mutationType == m2) == 0) {
+		cat(simID + ": LOST - RESTARTING\n");
+		
+		sim.readFromPopulationFile("/tmp/slim_" + simID + ".txt");
+		setSeed(getSeed() + 1);
+	}
+}
+
+// Bottleneck from 100,000 BP
+3448 {
+	p1.setSubpopulationSize(3000);
+}
+// to 70,000 BP
+4482 {
+	p1.setSubpopulationSize(30000);
+}
+
+// present
+6896 late() { sim.treeSeqOutput("/Users/kmt/Desktop/slim/sweep.trees"); }
+
+
+
+// 6896 is 200000 bp is gen 6896 - 0 = 6896  start
+
+// 3448 is 100000 bp is gen 6896 - 3448 start of bottleneck
+
+// 1724 is 50000 bp is 6896 - 1724 = 5172.  time of sweep
+
+// 1034 is 30000 bp is gen 6896 - 1034 = 5862 end of bottleneck
+
+// 0 is now is gen 6896 - 6896 = 0.   now
+
+
+
+
