@@ -1,0 +1,13 @@
+
+
+ARGweaver used python 2.7 and is installed in its own conda envirionment: argweaver
+
+Note that you need to chagne the option in the workflow from --resume to --overwrite if you want to redo the analysis
+
+If resampling is aborted the stats file in each sampling dir may be corrupt. Delete the last sample (here 2000):
+
+    find steps/argweaver/samples -name '*2000.smc.gz' -exec rm {} \;
+
+and roll back the stats file to the correct iteration (here 1900):
+
+    find steps/argweaver/samples -name '*[01].stats' | python scripts roll_back_argweaver_stats_files.py 1900
