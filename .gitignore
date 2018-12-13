@@ -106,15 +106,14 @@ venv.bak/
 
 
 # dirs to ignore
-steps/**
-results/**
-data/**
-figures/**
-docs/**
-plots/**
-trash/**
+BACKUP/
+steps/
+trash/
 
-old*
+# symlinks to ignore
+results
+figures
+plots
 
 .gwf*
 
