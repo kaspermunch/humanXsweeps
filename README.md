@@ -2,6 +2,9 @@
 
 Code for analysis of X chromosomes from the Simons Diversity Panel
 
+Create directory structure for analysis:
+
+    mkdir steps results figures 
 
 ## Environments
 
@@ -10,6 +13,8 @@ Code for analysis of X chromosomes from the Simons Diversity Panel
 This is the main py3 environment for scripts and jupyter analysis. You can create it like this:
 
     conda env create -f simons.yml
+
+The libraries genomicintervals and genomicwindows are my own and have their own git repositories.
 
 ### argweaver
 
