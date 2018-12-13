@@ -1,9 +1,9 @@
 
 Notebooks in this directory spans two analyzes:
  - An analysis of pairwise distances of all pseudohaploid chromosomes (notebooks 1-8)
- - An analysis of pairwise distances between male haploid X chromosomes (notebooks 2-3 and 9-> )
+ - An analysis of pairwise distances between male haploid X chromosomes (notebooks 2-3, 9-14, 15-20)
  
-workflow.py runs all notebooks in order and generates html
+workflow.py runs all notebooks in order usng GWF and generates html. Note that peak memory required is above 100G.
 
 - nb_01_pi_data.ipynb
 - nb_02_auxiliary_data.ipynb
