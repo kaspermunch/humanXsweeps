@@ -53,6 +53,7 @@ male_x_haploid_dir = steps_dir / 'male_x_haploids'
 
 # maximum uncalled bases in a 100kb window
 max_uncalled_bases = 50000
+ust_ishim_max_uncalled_bases = 70000
 
 # pairwise distance between two male windows to call it low distance
 #pwdist_cutoff = 6e-05

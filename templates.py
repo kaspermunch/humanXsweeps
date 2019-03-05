@@ -24,6 +24,19 @@ def rz2gz(rz_file, gz_file):
 #    return (options, shell_spec)
     return [rz_file], [gz_file], {}, spec
 
+def pad_archaic_files(template_file, input_file, pad_char, output_file):
+
+    options = {'memory': '8g',
+               'walltime': '1:00:00'
+              }
+
+    spec = """
+    source activate simons
+    python scripts/pad_archaic_genome.py {template} {input} {pad_char} {output}
+
+    """.format(template=template_file, input=input_file, pad_char=pad_char, output=output_file)
+
+    return [input_file], [output_file], options, spec
 
 # mask_sample = template(inputs=['{unmasked_file}', '{mask_file}'],
 #                           outputs=['{masked_file}'],

@@ -88,6 +88,8 @@ mydir = os.path.join(faststorage, 'people', 'kmt')
 reference_file_name = os.path.join(faststorage, 'data', 'cteam_lite_public3', 'FullyPublic', 'Href.fa')
 
 ust_ishim_sample_id = 'Ust_Ishim'
+altai_sample_id = 'Altai'
+denisova_sample_id = 'Denisova'
 
 orig_sample_files = list()
 orig_mask_files = list()
@@ -107,6 +109,21 @@ orig_ust_ishim_mask_file = os.path.join(faststorage,
                                         'data', 'cteam_lite_public3', 
                                         'FullyPublic', '{}.ccompmask.fa.rz'.format(ust_ishim_sample_id))
 
+# altai:
+orig_altai_sample_file = os.path.join(faststorage, 
+                                        'data', 'cteam_lite_public3', 
+                                        'FullyPublic', '{}.ccomp.fa.rz'.format(altai_sample_id))
+orig_altai_mask_file = os.path.join(faststorage, 
+                                        'data', 'cteam_lite_public3', 
+                                        'FullyPublic', '{}.ccompmask.fa.rz'.format(altai_sample_id))
+
+# denisova:
+orig_denisova_sample_file = os.path.join(faststorage, 
+                                        'data', 'cteam_lite_public3', 
+                                        'FullyPublic', '{}.ccomp.fa.rz'.format(denisova_sample_id))
+orig_denisova_mask_file = os.path.join(faststorage, 
+                                        'data', 'cteam_lite_public3', 
+                                        'FullyPublic', '{}.ccompmask.fa.rz'.format(denisova_sample_id))
 #################################################################################
 # turn rz files into gzip files
 #################################################################################
@@ -134,9 +151,20 @@ ust_ishim_mask_file = modpath(orig_ust_ishim_mask_file, parent=sample_dir, suffi
 gwf.target_from_template('smpl_rz2gz_{}'.format('ust_ishim'), rz2gz(rz_file=str(orig_ust_ishim_sample_file), gz_file=str(ust_ishim_sample_file)))
 gwf.target_from_template('mask_rz2gz_{}'.format('ust_ishim'), rz2gz(rz_file=str(orig_ust_ishim_mask_file), gz_file=str(ust_ishim_mask_file)))
 
+# altai
+altai_sample_file = modpath(orig_altai_sample_file, parent=sample_dir, suffix='.gz')
+altai_mask_file = modpath(orig_altai_mask_file, parent=sample_dir, suffix='.gz')
+gwf.target_from_template('smpl_rz2gz_{}'.format('altai'), rz2gz(rz_file=str(orig_altai_sample_file), gz_file=str(altai_sample_file)))
+gwf.target_from_template('mask_rz2gz_{}'.format('altai'), rz2gz(rz_file=str(orig_altai_mask_file), gz_file=str(altai_mask_file)))
+
+# denisova
+denisova_sample_file = modpath(orig_denisova_sample_file, parent=sample_dir, suffix='.gz')
+denisova_mask_file = modpath(orig_denisova_mask_file, parent=sample_dir, suffix='.gz')
+gwf.target_from_template('smpl_rz2gz_{}'.format('denisova'), rz2gz(rz_file=str(orig_denisova_sample_file), gz_file=str(denisova_sample_file)))
+gwf.target_from_template('mask_rz2gz_{}'.format('denisova'), rz2gz(rz_file=str(orig_denisova_mask_file), gz_file=str(denisova_mask_file)))
 
 
-# Hack to make the seq and mask same length:
+# Hack to make the seq and mask same length for Ust Ishim (trimmed to shortest one of the two):
 trimmed_ust_ishim_sample_file = modpath(ust_ishim_sample_file, suffix=('.fa.gz', '.trimmed.fa.gz'))
 trimmed_ust_ishim_mask_file = modpath(ust_ishim_mask_file, suffix=('.fa.gz', '.trimmed.fa.gz'))
 
@@ -149,6 +177,36 @@ g = gwf.target("trim_ust_ishim", inputs=[ust_ishim_sample_file, ust_ishim_mask_f
 
 """.format(ust_ishim_sample_file, ust_ishim_mask_file, trimmed_ust_ishim_sample_file, trimmed_ust_ishim_mask_file)
 
+
+# Hack to make the archaic sequences same length as all other:
+# random sample file as template:
+template_sample_file = sample_files[0]
+
+padded_altai_sample_file = modpath(altai_sample_file, suffix=('.fa.gz', '.padded.fa.gz'))
+padded_altai_mask_file = modpath(altai_mask_file, suffix=('.fa.gz', '.padded.fa.gz'))
+gwf.target_from_template("pad_altai", pad_archaic_files(template_file=template_sample_file,
+           input_file=altai_sample_file, pad_char='N', output_file=padded_altai_sample_file))
+gwf.target_from_template("pad_altai_mask", pad_archaic_files(template_file=template_sample_file,
+           input_file=altai_mask_file, pad_char='0', output_file=padded_altai_mask_file))
+
+padded_denisova_sample_file = modpath(denisova_sample_file, suffix=('.fa.gz', '.padded.fa.gz'))
+padded_denisova_mask_file = modpath(denisova_mask_file, suffix=('.fa.gz', '.padded.fa.gz'))
+gwf.target_from_template("pad_denisova", pad_archaic_files(template_file=template_sample_file,
+           input_file=denisova_sample_file, pad_char='N', output_file=padded_denisova_sample_file))
+gwf.target_from_template("pad_denisova_mask", pad_archaic_files(template_file=template_sample_file,
+           input_file=denisova_mask_file, pad_char='0', output_file=padded_denisova_mask_file))
+
+# g = gwf.target("pad_archaic", inputs=[altai_sample_file, altai_mask_file],
+#                       outputs=[padded_altai_sample_file, padded_altai_mask_file], 
+#                       memory='15g', walltime='11:00:00') << """
+
+#     source activate simons
+#     python scripts/pad_archaic_genome.py {template} {input_seq} N {output_seq}
+#     python scripts/pad_archaic_genome.py {template} {input_mask} 0 {output_mask}
+
+# """.format(template=template_sample_file,
+#            input_seq=altai_sample_file, output_seq=padded_altai_sample_file,
+#            input_mask=altai_mask_file, output_mask=padded_altai_mask_file)
 
 
 #################################################################################
@@ -173,6 +231,20 @@ gwf.target_from_template("masking_{}".format('ust_ishim'), mask_sample(unmasked_
         mask_file=str(trimmed_ust_ishim_mask_file), masked_file=str(ust_ishim_masked_sample_file), 
         mask_level=mask_level,
         skip=['Y'])) 
+
+# altai
+altai_masked_sample_file = modpath(padded_altai_sample_file, parent=masked_sample_dir)
+gwf.target_from_template("masking_{}".format('altai'), mask_sample(unmasked_file=str(padded_altai_sample_file), 
+        mask_file=str(padded_altai_mask_file), masked_file=str(altai_masked_sample_file), 
+        mask_level=mask_level,
+        skip=['Y']))
+
+# denisova
+denisova_masked_sample_file = modpath(padded_denisova_sample_file, parent=masked_sample_dir)
+gwf.target_from_template("masking_{}".format('denisova'), mask_sample(unmasked_file=str(padded_denisova_sample_file), 
+        mask_file=str(padded_denisova_mask_file), masked_file=str(denisova_masked_sample_file), 
+        mask_level=mask_level,
+        skip=['Y']))
 
 
 #################################################################################
@@ -218,6 +290,37 @@ gwf.target_from_template('psudohaploids_{}'.format('ust_ishim'), pseudohaploids(
     ref_file_name=str(reference_file_name),
     output_file1=str(ust_ishim_output_file_name1),
     output_file2=str(ust_ishim_output_file_name2)))
+
+
+# altai:
+basename = os.path.basename(altai_masked_sample_file).split('.')[0]
+altai_output_file_name1 = modpath('{}-A.fa.gz'.format(basename), parent=pseudohaploid_dir)
+altai_output_file_name2 = modpath('{}-B.fa.gz'.format(basename), parent=pseudohaploid_dir)
+
+altai_pseudohaploid_file_names = [os.path.join(altai_output_file_name1), 
+                                  os.path.join(altai_output_file_name2)]
+
+gwf.target_from_template('psudohaploids_{}'.format('altai'), pseudohaploids(input_file=altai_masked_sample_file, 
+    ref_file_name=str(reference_file_name),
+    output_file1=str(altai_output_file_name1),
+    output_file2=str(altai_output_file_name2)))
+
+
+# denisova:
+basename = os.path.basename(denisova_masked_sample_file).split('.')[0]
+denisova_output_file_name1 = modpath('{}-A.fa.gz'.format(basename), parent=pseudohaploid_dir)
+denisova_output_file_name2 = modpath('{}-B.fa.gz'.format(basename), parent=pseudohaploid_dir)
+
+denisova_pseudohaploid_file_names = [os.path.join(denisova_output_file_name1), 
+                                  os.path.join(denisova_output_file_name2)]
+
+gwf.target_from_template('psudohaploids_{}'.format('denisova'), pseudohaploids(input_file=denisova_masked_sample_file, 
+    ref_file_name=str(reference_file_name),
+    output_file1=str(denisova_output_file_name1),
+    output_file2=str(denisova_output_file_name2)))
+
+
+archaic_pseudohaploid_file_names = altai_pseudohaploid_file_names + denisova_pseudohaploid_file_names
 
 
 #################################################################################
@@ -382,10 +485,8 @@ g = gwf.target("build_dist_datasets", inputs=dist_file_names, outputs=dist_store
 """.format(dist_dir=dist_dir, dist_store_dir=dist_store_dir, metadata_dir=metadata_dir)
 
 
-
 #################################################################################
 # extract male x chromosomes
-# All pairs of male x halplotypes are compared
 #################################################################################
 
 male_subset = list()
@@ -408,10 +509,25 @@ if not os.path.exists(male_x_haploids_dir):
 
 male_x_haploids = [modpath(x, parent=male_x_haploids_dir, suffix='') for x in male_subset]
 
-
 for i, (full_genome, only_x) in enumerate(zip(male_subset, male_x_haploids)):
     gwf.target_from_template("extract_x_{}".format(i), 
         extract_x(full_genome=str(full_genome), only_x=str(only_x)))
+
+
+#################################################################################
+# extract x pseudohaploids for altai and denisova
+#################################################################################
+
+archaic_x_pseudohaploids_dir = os.path.join(mydir, 'steps', 'archaic_x_pseudohaploids')
+if not os.path.exists(archaic_x_pseudohaploids_dir):
+    os.makedirs(archaic_x_pseudohaploids_dir)
+
+archaic_x_pseudohaploids = [modpath(x, parent=archaic_x_pseudohaploids_dir, suffix='') for x in archaic_pseudohaploid_file_names]
+
+for i, (full_genome, only_x) in enumerate(zip(archaic_pseudohaploid_file_names, archaic_x_pseudohaploids)):
+    gwf.target_from_template("extract_archaic_x_{}".format(i), 
+        extract_x(full_genome=str(full_genome), only_x=str(only_x)))
+
 
 ##################################################################################
 ## mask out ampliconic regions (replace with N) from extracted male X chromosomes
@@ -484,7 +600,7 @@ for i, (unmasked, masked) in enumerate(zip(male_x_haploids_ampl_masked, ampl_and
 
 
 #################################################################################
-# compute diffs in windows over male haplotypes
+# compute diffs in windows over all male x haplotypes
 #################################################################################
 
 male_dist_dir = os.path.join(mydir, 'steps', 'male_x_haploid_dist')
@@ -727,6 +843,59 @@ g = gwf.target("build_male_dist_admix_masked_datasets2", inputs=male_ampl_and_ad
 
 """.format(dist_dir=male_ampl_and_admix_masked_dist_dir, dist_store_dir=male_dist_ampl_and_admix_masked_store_dir, metadata_dir=metadata_dir)
 
+
+
+#################################################################################
+# compute additional diffs between archaic female pseudohaplotids and all male x haplotypes
+#################################################################################
+
+archaic_dist_dir = os.path.join(mydir, 'steps', 'archaic_x_pseudohaploid_dist')
+if not os.path.exists(archaic_dist_dir):
+    os.makedirs(archaic_dist_dir)
+
+archaic_dist_file_names = list()
+
+i = 0
+
+for file1, file2 in itertools.product(sorted(male_x_haploids), archaic_x_pseudohaploids):
+
+    indiv1, hap1 = re.search(r'/([^/]+)-([AB]).fa', str(file1)).groups() 
+    indiv2, hap2 = re.search(r'/([^/]+)-([AB]).fa', str(file2)).groups() 
+
+    output_base_name = '{}_{}_{}_{}_{}.pickle' .format(indiv1, hap1, indiv2, hap2, bp2str(dist_binsize))
+    out_file_name = modpath(output_base_name, parent=archaic_dist_dir)
+
+    archaic_dist_file_names.append(out_file_name)
+
+    gwf.target_from_template('archaic_dist_windows_{}'.format(i), dist_for_x_pair_template(str(file1), str(file2), 
+        dist_binsize, 'NA', indiv1, hap1, indiv2, hap2, str(out_file_name)))
+
+    i += 1
+
+
+#################################################################################
+# Build distance data sets for archaic pseudohaploids and male x chromosomes
+#################################################################################
+
+archaic_dist_store_dir = os.path.join(mydir, 'steps', 'archaic_dist_stores')
+if not os.path.exists(archaic_dist_store_dir):
+    os.makedirs(archaic_dist_store_dir)
+
+#male_dist_store_base_names = ["male_dist_data_{}_{}".format(x, bp2str(dist_binsize)) for x in hg19_chrom_sizes.hg19_chrom_sizes.keys()]
+archaic_dist_store_base_names = ["archaic_dist_data_chrX_{}".format(bp2str(dist_binsize))]
+archaic_dist_store_files = [modpath(x, parent=archaic_dist_store_dir, suffix='.store') for x in archaic_dist_store_base_names]
+
+g = gwf.target("build_archaic_dist_datasets", inputs=archaic_dist_file_names, outputs=archaic_dist_store_files, 
+    memory='80g', walltime='11:00:00') << """
+
+    source activate simons
+    python scripts/build_archaic_dist_datasets.py \
+        --dist-dir {dist_dir} \
+        --result-dir {dist_store_dir} \
+        --meta-data-dir {metadata_dir} \
+        --result-file-prefix archaic_dist_data
+
+""".format(dist_dir=archaic_dist_dir, dist_store_dir=archaic_dist_store_dir, metadata_dir=metadata_dir)
 
 
 # #################################################################################
@@ -975,17 +1144,17 @@ for region_label in ['World']:
 # slim simulations
 #################################################################################
 
-slim_file = 'scripts/sweep_after_bottle.slim'
-slim_sub_dir = modpath(slim_file, parent='', suffix='')
-slim_output_dir = os.path.join(mydir, 'steps', 'slim', slim_sub_dir)
-if not os.path.exists(slim_output_dir):
-    os.makedirs(slim_output_dir)
+# slim_file = 'scripts/sweep_after_bottle.slim'
+# slim_sub_dir = modpath(slim_file, parent='', suffix='')
+# slim_output_dir = os.path.join(mydir, 'steps', 'slim', slim_sub_dir)
+# if not os.path.exists(slim_output_dir):
+#     os.makedirs(slim_output_dir)
 
-for i in range(100):
-    for selcoef in [0.01, 0.05, 0.1, 0.2]:
-        sim_output_prefix = os.path.join(slim_output_dir, '{}_{}'.format(i, int(selcoef*100)))
-        gwf.target_from_template('slimsim_{}_{}'.format(i, int(selcoef*100)), 
-            slim_sim(selcoef, slim_file, sim_output_prefix))
+# for i in range(100):
+#     for selcoef in [0.01, 0.05, 0.1, 0.2]:
+#         sim_output_prefix = os.path.join(slim_output_dir, '{}_{}'.format(i, int(selcoef*100)))
+#         gwf.target_from_template('slimsim_{}_{}'.format(i, int(selcoef*100)), 
+#             slim_sim(selcoef, slim_file, sim_output_prefix))
 
 #################################################################################
 
