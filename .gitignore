@@ -115,6 +115,13 @@ results
 figures
 plots
 
+argweaver/
+ctools/
+kwarg/
+slim
+
+.DS_Store
+
 .gwf*
 
 # but not README.md
