@@ -121,6 +121,7 @@ kwarg/
 slim
 
 .DS_Store
+._*
 
 .gwf*
 
