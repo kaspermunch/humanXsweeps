@@ -56,7 +56,6 @@ max_uncalled_bases = 50000
 ust_ishim_max_uncalled_bases = 70000
 
 # pairwise distance between two male windows to call it low distance
-#pwdist_cutoff = 6e-05
 pwdist_cutoff = 5e-05
 
 # maximum proportion of individual haplotypes missing in a window
@@ -78,3 +77,9 @@ min_prop_swept = 0.5
 # minimum proportion of individuals swept for a region to be included in peaks
 peak_min_prop_swept = 0.25
 
+
+# mutation rate per year
+mut_per_year = 4.3e-10 
+
+# generation time
+gen_time = 29

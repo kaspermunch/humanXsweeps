@@ -1,0 +1,77 @@
+initialize() {
+	initializeTreeSeq();
+	initializeMutationRate(0);
+   initializeMutationType("m1", 0.5, "f", 0.0);
+	initializeMutationType("m2", 1.0, "f", s);        // introduced
+   initializeGenomicElementType("g1", m1, 1.0);
+ 	initializeGenomicElement(g1, 0, 4e6-1);
+	initializeRecombinationRate(1e-8);
+}
+// 200,000 BP
+1 {
+	defineConstant("simID", getSeed());
+	sim.addSubpop("p1", 20000);
+}
+// sweep 110,000 BP
+5171 late() {
+	target = sample(p1.genomes, 1);
+	target.addNewDrawnMutation(m2, 2000000);
+	sim.outputFull("/tmp/slim_" + simID + ".txt");
+}
+5171:6896 late() {
+	if (sim.countOfMutationsOfType(m2) == 0 & sum(sim.substitutions.mutationType == m2) == 0) {
+		cat(simID + ": LOST - RESTARTING\n");
+		
+		sim.readFromPopulationFile("/tmp/slim_" + simID + ".txt");
+		setSeed(getSeed() + 1);
+	}
+
+   	mut = sim.mutationsOfType(m2);
+	if (mut.selectionCoeff != 0.0) {
+		if (sim.mutationFrequencies(NULL, mut) >= 0.5) {
+     		cat(simID + ": PARTIAL COMPLETED\n");
+			mut.setSelectionCoeff(0.0);			
+		}
+	}
+}
+
+// Bottleneck from 100,000 BP
+3448 {
+	p1.setSubpopulationSize(2000);
+}
+// to 30,000 BP
+5861 {
+	p1.setSubpopulationSize(20000);
+}
+
+// present
+6896 late() { sim.treeSeqOutput("/Users/kmt/Desktop/slim/sweep.trees"); }
+
+
+// >>> print('\n'.join(["years:{}, gens: {}".format(x, int(6896 - x / 29)) for x in range(0, 210000, 10000)]))
+// years:0, gens: 6896
+// years:10000, gens: 6551
+// years:20000, gens: 6206
+// years:30000, gens: 5861
+// years:40000, gens: 5516
+// years:50000, gens: 5171
+// years:60000, gens: 4827
+// years:70000, gens: 4482
+// years:80000, gens: 4137
+// years:90000, gens: 3792
+// years:100000, gens: 3447
+// years:110000, gens: 3102
+// years:120000, gens: 2758
+// years:130000, gens: 2413
+// years:140000, gens: 2068
+// years:150000, gens: 1723
+// years:160000, gens: 1378
+// years:170000, gens: 1033
+// years:180000, gens: 689
+// years:190000, gens: 344
+// years:200000, gens: 0
+
+
+
+
+

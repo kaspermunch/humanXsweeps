@@ -1,0 +1,38 @@
+
+import os, sys
+import numpy
+import pandas
+from pandas import DataFrame, Series
+import argparse
+from pathlib import Path
+
+parser = argparse.ArgumentParser()
+parser.add_argument('sweep_data_dir', type=Path, help='')
+parser.add_argument('output_file', type=Path, help='')
+args = parser.parse_args()
+
+lst = list()
+for file_path in args.sweep_data_dir.glob('**/*.hdf'):
+
+    simulation, replication, selection_percent = \
+        file_path.with_suffix('').name.rsplit('_', maxsplit=2)
+
+    sweep_data = pandas.read_hdf(str(file_path))
+
+    df = (sweep_data
+           .groupby(['start', 'end'])['swept']
+           .aggregate(['sum', 'size'])
+           .rename(columns={'sum': 'nr_swept', 'size': 'total'})
+           .reset_index(level=['start', 'end'])
+          )
+    df['simulation'] = simulation
+    df['replication'] = replication
+    df['selection_coef'] = int(selection_percent) / 100
+
+    lst.append(df)
+
+pandas.concat(lst).to_hdf(args.output_file, 'df', format='table', mode='w')
+
+
+
+

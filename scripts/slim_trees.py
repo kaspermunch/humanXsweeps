@@ -15,6 +15,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--selcoef", type=float)
 parser.add_argument("--window", type=int)
 parser.add_argument("--samples", type=int)
+parser.add_argument("--mutationrate", type=float)
+parser.add_argument("--generationtime", type=int)
 parser.add_argument("slurm_script", type=str)
 parser.add_argument("trees_file", type=str)
 parser.add_argument("hdf_file", type=str)
@@ -52,7 +54,7 @@ print(stderr)
 ts = pyslim.load(args.trees_file)
 
 # overlay mutations
-mutated_ts = msprime.mutate(ts, rate=1e-7, random_seed=7)
+mutated_ts = msprime.mutate(ts, rate=args.mutationrate*args.generationtime, random_seed=7)
 
 # random indexes for samples
 sample_idx = set(random.sample(range(ts.num_individuals), args.samples))
