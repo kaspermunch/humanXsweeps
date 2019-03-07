@@ -8,9 +8,12 @@ from random import seed
 seed(42)
 
 sys.path.append('./scripts')
+sys.path.append('./notebooks')
 
 import simons_meta_data
 import hg19_chrom_sizes
+
+import analysis_globals
 
 from templates import *
 
@@ -131,6 +134,7 @@ orig_denisova_mask_file = os.path.join(faststorage,
 # I do this because there is some trailing grabage in 
 # the rz files that python gzip cannot handle
 
+# dir for files
 sample_dir = os.path.join(mydir, 'steps', 'gziped_samples')
 if not os.path.exists(sample_dir):
     os.makedirs(sample_dir)
@@ -215,6 +219,7 @@ gwf.target_from_template("pad_denisova_mask", pad_archaic_files(template_file=te
 
 mask_level = 1
 
+# dir for files
 masked_sample_dir = os.path.join(mydir, 'steps', 'masked_samples')
 if not os.path.exists(masked_sample_dir):
     os.makedirs(masked_sample_dir)
@@ -251,6 +256,7 @@ gwf.target_from_template("masking_{}".format('denisova'), mask_sample(unmasked_f
 # generate pseudohaploids
 #################################################################################
 
+# dir for files
 pseudohaploid_dir = os.path.join(mydir, 'steps', 'pseudohaploid_genomes')
 if not os.path.exists(pseudohaploid_dir):
     os.makedirs(pseudohaploid_dir)
@@ -392,6 +398,7 @@ gwf.target_from_template('pi_windows_{}'.format('ust_ishim'), pi_for_pair_templa
 
 dist_binsize = 100000
 
+# dir for files
 dist_dir = os.path.join(mydir, 'steps', 'afr_nonafr_x_pseudohap_dist')
 if not os.path.exists(dist_dir):
     os.makedirs(dist_dir)
@@ -439,6 +446,7 @@ for file1, file2 in itertools.combinations(sorted(x_pseudohaploids), 2):
 # Build pi data sets for each chromosome with added meta info
 #################################################################################
 
+# dir for files
 pi_store_dir = os.path.join(mydir, 'steps', 'pi_stores')
 if not os.path.exists(pi_store_dir):
     os.makedirs(pi_store_dir)
@@ -465,6 +473,7 @@ g = gwf.target("build_pi_datasets", inputs=pi_file_names, outputs=pi_store_files
 # NB: only X pseudohaploids between pairs of which at least one is African
 #################################################################################
 
+# dir for files
 dist_store_dir = os.path.join(mydir, 'steps', 'dist_stores')
 if not os.path.exists(dist_store_dir):
     os.makedirs(dist_store_dir)
@@ -503,6 +512,7 @@ basename = os.path.basename(file_name).split('.')[0]
 assert basename.endswith('-A')
 male_subset.append(file_name)
 
+# dir for files
 male_x_haploids_dir = os.path.join(mydir, 'steps', 'male_x_haploids')
 if not os.path.exists(male_x_haploids_dir):
     os.makedirs(male_x_haploids_dir)
@@ -518,6 +528,7 @@ for i, (full_genome, only_x) in enumerate(zip(male_subset, male_x_haploids)):
 # extract x pseudohaploids for altai and denisova
 #################################################################################
 
+# dir for files
 archaic_x_pseudohaploids_dir = os.path.join(mydir, 'steps', 'archaic_x_pseudohaploids')
 if not os.path.exists(archaic_x_pseudohaploids_dir):
     os.makedirs(archaic_x_pseudohaploids_dir)
@@ -550,6 +561,7 @@ for i, (full_genome, only_x) in enumerate(zip(archaic_pseudohaploid_file_names, 
 # mask out ampliconic regions (replace with N) from extracted male X chromosomes
 #################################################################################
 
+# dir for files
 male_x_haploids_ampl_masked_dir = os.path.join(mydir, 'steps', 'male_x_haploids_ampl_masked')
 if not os.path.exists(male_x_haploids_ampl_masked_dir):
     os.makedirs(male_x_haploids_ampl_masked_dir)
@@ -567,6 +579,7 @@ for i, (unmasked, masked) in enumerate(zip(male_x_haploids, male_x_haploids_ampl
 # mask admxiture segments in male x chromosomes
 #################################################################################
 
+# dir for files
 admix_masked_male_x_haploids_dir = os.path.join(mydir, 'steps', 'male_x_haploids_admix_masked')
 if not os.path.exists(admix_masked_male_x_haploids_dir):
     os.makedirs(admix_masked_male_x_haploids_dir)
@@ -583,100 +596,104 @@ for i, (unmasked, masked) in enumerate(zip(male_x_haploids, admix_masked_male_x_
         admix_pred_file=laurits_admix_pred_file, min_post_prob=min_admix_post_prob))
 
 
-#################################################################################
-# same but for haplotypes with ampliconic regions masked out
-#################################################################################
+# #################################################################################
+# # same but for haplotypes with ampliconic regions masked out
+# #################################################################################
 
-ampl_and_admix_masked_male_x_haploids_dir = os.path.join(mydir, 'steps', 'male_x_haploids_ampl_and_admix_masked')
-if not os.path.exists(ampl_and_admix_masked_male_x_haploids_dir):
-    os.makedirs(ampl_and_admix_masked_male_x_haploids_dir)
+# # dir for files
+# ampl_and_admix_masked_male_x_haploids_dir = os.path.join(mydir, 'steps', 'male_x_haploids_ampl_and_admix_masked')
+# if not os.path.exists(ampl_and_admix_masked_male_x_haploids_dir):
+#     os.makedirs(ampl_and_admix_masked_male_x_haploids_dir)
 
-ampl_and_admix_masked_male_x_haploids = [modpath(x, parent=ampl_and_admix_masked_male_x_haploids_dir, suffix='.fa') for x in male_x_haploids_ampl_masked]
+# ampl_and_admix_masked_male_x_haploids = [modpath(x, parent=ampl_and_admix_masked_male_x_haploids_dir, suffix='.fa') for x in male_x_haploids_ampl_masked]
 
-for i, (unmasked, masked) in enumerate(zip(male_x_haploids_ampl_masked, ampl_and_admix_masked_male_x_haploids)):
-    gwf.target_from_template("admixmask2_x_{}".format(i), 
-        admix_mask(unmasked_file=str(unmasked), masked_file=str(masked), 
-        admix_pred_file=laurits_admix_pred_file, min_post_prob=min_admix_post_prob))
+# for i, (unmasked, masked) in enumerate(zip(male_x_haploids_ampl_masked, ampl_and_admix_masked_male_x_haploids)):
+#     gwf.target_from_template("admixmask2_x_{}".format(i), 
+#         admix_mask(unmasked_file=str(unmasked), masked_file=str(masked), 
+#         admix_pred_file=laurits_admix_pred_file, min_post_prob=min_admix_post_prob))
 
 
-#################################################################################
-# compute diffs in windows over all male x haplotypes
-#################################################################################
+# #################################################################################
+# # compute diffs in windows over all male x haplotypes
+# #################################################################################
 
-male_dist_dir = os.path.join(mydir, 'steps', 'male_x_haploid_dist')
-if not os.path.exists(male_dist_dir):
-    os.makedirs(male_dist_dir)
+# # dir for files
+# male_dist_dir = os.path.join(mydir, 'steps', 'male_x_haploid_dist')
+# if not os.path.exists(male_dist_dir):
+#     os.makedirs(male_dist_dir)
 
-male_dist_file_names = list()
+# male_dist_file_names = list()
 
-i = 0
+# i = 0
 
-# iter male haploid pairs
-for file1, file2 in itertools.combinations(sorted(male_x_haploids), 2):
+# # iter male haploid pairs
+# for file1, file2 in itertools.combinations(sorted(male_x_haploids), 2):
     
-    indiv1, hap1 = re.search(r'/([^/]+)-([AB]).fa', str(file1)).groups() 
-    indiv2, hap2 = re.search(r'/([^/]+)-([AB]).fa', str(file2)).groups() 
+#     indiv1, hap1 = re.search(r'/([^/]+)-([AB]).fa', str(file1)).groups() 
+#     indiv2, hap2 = re.search(r'/([^/]+)-([AB]).fa', str(file2)).groups() 
 
-    # we do not compare chromosome from the same 
-    # individul to avoid inbreeding arterfcts
-    if indiv1 == indiv2:
-        continue
+#     # we do not compare chromosome from the same 
+#     # individul to avoid inbreeding arterfcts
+#     if indiv1 == indiv2:
+#         continue
 
-    # open files for the pair of pseudohaploids to compare
-    f1 = modpath(file1, parent=male_x_haploids_dir)
-    f2 = modpath(file2, parent=male_x_haploids_dir)
+#     # open files for the pair of pseudohaploids to compare
+#     f1 = modpath(file1, parent=male_x_haploids_dir)
+#     f2 = modpath(file2, parent=male_x_haploids_dir)
 
-    output_base_name = '{}_{}_{}_{}_{}.pickle' .format(indiv1, hap1, indiv2, hap2, bp2str(dist_binsize))
-    out_file_name = modpath(output_base_name, parent=male_dist_dir)
+#     output_base_name = '{}_{}_{}_{}_{}.pickle' .format(indiv1, hap1, indiv2, hap2, bp2str(dist_binsize))
+#     out_file_name = modpath(output_base_name, parent=male_dist_dir)
 
-    male_dist_file_names.append(out_file_name)
+#     male_dist_file_names.append(out_file_name)
 
-    gwf.target_from_template('male_dist_windows1_{}'.format(i), dist_for_x_pair_template(str(f1), str(f2), 
-        dist_binsize, 'NA', indiv1, hap1, indiv2, hap2, str(out_file_name)))
+#     gwf.target_from_template('male_dist_windows1_{}'.format(i), dist_for_x_pair_template(str(f1), str(f2), 
+#         dist_binsize, 'NA', indiv1, hap1, indiv2, hap2, str(out_file_name)))
 
-    i += 1
+#     i += 1
 
-#################################################################################
-# same but for male haplotypes with ampliconic regions masked out
-#################################################################################
+# #################################################################################
+# # same but for male haplotypes with ampliconic regions masked out
+# #################################################################################
 
-male_dist_dir_ampl_masked = os.path.join(mydir, 'steps', 'male_x_haploid_dist_ampl_masked')
-if not os.path.exists(male_dist_dir_ampl_masked):
-    os.makedirs(male_dist_dir_ampl_masked)
+# # dir for files
+# male_dist_dir_ampl_masked = os.path.join(mydir, 'steps', 'male_x_haploid_dist_ampl_masked')
+# if not os.path.exists(male_dist_dir_ampl_masked):
+#     os.makedirs(male_dist_dir_ampl_masked)
 
-male_ampl_masked_dist_file_names = list()
+# male_ampl_masked_dist_file_names = list()
 
-i = 0
+# i = 0
 
-# iter male haploid pairs
-for file1, file2 in itertools.combinations(sorted(male_x_haploids_ampl_masked), 2):
+# # iter male haploid pairs
+# for file1, file2 in itertools.combinations(sorted(male_x_haploids_ampl_masked), 2):
     
-    indiv1, hap1 = re.search(r'/([^/]+)-([AB]).fa', str(file1)).groups() 
-    indiv2, hap2 = re.search(r'/([^/]+)-([AB]).fa', str(file2)).groups() 
+#     indiv1, hap1 = re.search(r'/([^/]+)-([AB]).fa', str(file1)).groups() 
+#     indiv2, hap2 = re.search(r'/([^/]+)-([AB]).fa', str(file2)).groups() 
 
-    # we do not compare chromosome from the same 
-    # individul to avoid inbreeding arterfcts
-    if indiv1 == indiv2:
-        continue
+#     # we do not compare chromosome from the same 
+#     # individul to avoid inbreeding arterfcts
+#     if indiv1 == indiv2:
+#         continue
 
-    # open files for the pair of pseudohaploids to compare
-    f1 = modpath(file1, parent=male_x_haploids_ampl_masked_dir)
-    f2 = modpath(file2, parent=male_x_haploids_ampl_masked_dir)
+#     # open files for the pair of pseudohaploids to compare
+#     f1 = modpath(file1, parent=male_x_haploids_ampl_masked_dir)
+#     f2 = modpath(file2, parent=male_x_haploids_ampl_masked_dir)
 
-    output_base_name = '{}_{}_{}_{}_{}.pickle' .format(indiv1, hap1, indiv2, hap2, bp2str(dist_binsize))
-    out_file_name = modpath(output_base_name, parent=male_dist_dir_ampl_masked)
+#     output_base_name = '{}_{}_{}_{}_{}.pickle' .format(indiv1, hap1, indiv2, hap2, bp2str(dist_binsize))
+#     out_file_name = modpath(output_base_name, parent=male_dist_dir_ampl_masked)
 
-    male_ampl_masked_dist_file_names.append(out_file_name)
+#     male_ampl_masked_dist_file_names.append(out_file_name)
 
-    gwf.target_from_template('male_dist_windows2_{}'.format(i), dist_for_x_pair_template(str(f1), str(f2), 
-        dist_binsize, 'NA', indiv1, hap1, indiv2, hap2, str(out_file_name)))
+#     gwf.target_from_template('male_dist_windows2_{}'.format(i), dist_for_x_pair_template(str(f1), str(f2), 
+#         dist_binsize, 'NA', indiv1, hap1, indiv2, hap2, str(out_file_name)))
 
-    i += 1
+#     i += 1
 
 #################################################################################
 # same but for the admix-masked haplotypes (produces separate stats for admix masked)
 #################################################################################
 
+# dir for files
 male_admix_masked_dist_dir = os.path.join(mydir, 'steps', 'male_x_haploid_dist_admix_masked')
 if not os.path.exists(male_admix_masked_dist_dir):
     os.makedirs(male_admix_masked_dist_dir)
@@ -710,145 +727,181 @@ for file1, file2 in itertools.combinations(sorted(admix_masked_male_x_haploids),
 
     i += 1
 
-#################################################################################
-# same but for the admix-masked haplotypes WITH ampliconic regions masked out (produces separate stats for admix masked)
-#################################################################################
+# #################################################################################
+# # same but for the admix-masked haplotypes WITH ampliconic regions masked out (produces separate stats for admix masked)
+# #################################################################################
 
-male_ampl_and_admix_masked_dist_dir = os.path.join(mydir, 'steps', 'male_x_haploid_dist_ampl_and_admix_masked')
-if not os.path.exists(male_ampl_and_admix_masked_dist_dir):
-    os.makedirs(male_ampl_and_admix_masked_dist_dir)
+# # dir for files
+# male_ampl_and_admix_masked_dist_dir = os.path.join(mydir, 'steps', 'male_x_haploid_dist_ampl_and_admix_masked')
+# if not os.path.exists(male_ampl_and_admix_masked_dist_dir):
+#     os.makedirs(male_ampl_and_admix_masked_dist_dir)
 
-male_ampl_and_admix_masked_dist_file_names = list()
+# male_ampl_and_admix_masked_dist_file_names = list()
 
-i = 0
+# i = 0
 
-# iter male haploid pairs
-for file1, file2 in itertools.combinations(sorted(ampl_and_admix_masked_male_x_haploids), 2):
+# # iter male haploid pairs
+# for file1, file2 in itertools.combinations(sorted(ampl_and_admix_masked_male_x_haploids), 2):
     
-    indiv1, hap1 = re.search(r'/([^/]+)-([AB]).fa', str(file1)).groups() 
-    indiv2, hap2 = re.search(r'/([^/]+)-([AB]).fa', str(file2)).groups() 
+#     indiv1, hap1 = re.search(r'/([^/]+)-([AB]).fa', str(file1)).groups() 
+#     indiv2, hap2 = re.search(r'/([^/]+)-([AB]).fa', str(file2)).groups() 
 
-    # we do not compare chromosome from the same 
-    # individul to avoid inbreeding arterfcts
-    if indiv1 == indiv2:
-        continue
+#     # we do not compare chromosome from the same 
+#     # individul to avoid inbreeding arterfcts
+#     if indiv1 == indiv2:
+#         continue
 
-    # open files for the pair of pseudohaploids to compare
-    f1 = modpath(file1, parent=ampl_and_admix_masked_male_x_haploids_dir)
-    f2 = modpath(file2, parent=ampl_and_admix_masked_male_x_haploids_dir)
+#     # open files for the pair of pseudohaploids to compare
+#     f1 = modpath(file1, parent=ampl_and_admix_masked_male_x_haploids_dir)
+#     f2 = modpath(file2, parent=ampl_and_admix_masked_male_x_haploids_dir)
 
-    output_base_name = '{}_{}_{}_{}_{}.pickle' .format(indiv1, hap1, indiv2, hap2, bp2str(dist_binsize))
-    out_file_name = modpath(output_base_name, parent=male_ampl_and_admix_masked_dist_dir)
+#     output_base_name = '{}_{}_{}_{}_{}.pickle' .format(indiv1, hap1, indiv2, hap2, bp2str(dist_binsize))
+#     out_file_name = modpath(output_base_name, parent=male_ampl_and_admix_masked_dist_dir)
 
-    male_ampl_and_admix_masked_dist_file_names.append(out_file_name)
+#     male_ampl_and_admix_masked_dist_file_names.append(out_file_name)
 
-    gwf.target_from_template('male_dist_admix_masked_windows2_{}'.format(i), admix_masked_dist_for_x_pair_template(str(f1), str(f2), 
-        dist_binsize, 'NA', indiv1, hap1, indiv2, hap2, str(out_file_name)))
+#     gwf.target_from_template('male_dist_admix_masked_windows2_{}'.format(i), admix_masked_dist_for_x_pair_template(str(f1), str(f2), 
+#         dist_binsize, 'NA', indiv1, hap1, indiv2, hap2, str(out_file_name)))
 
-    i += 1
+#     i += 1
 
-#################################################################################
-# Build distance data sets for each male chromosome with added meta info
-#################################################################################
+# #################################################################################
+# # Build distance data sets and call sweeps for each male chromosome with added meta info
+# #################################################################################
 
-male_dist_store_dir = os.path.join(mydir, 'steps', 'male_dist_stores')
-if not os.path.exists(male_dist_store_dir):
-    os.makedirs(male_dist_store_dir)
+# # dir for files
+# male_dist_store_dir = os.path.join(mydir, 'steps', 'male_dist_stores')
+# if not os.path.exists(male_dist_store_dir):
+#     os.makedirs(male_dist_store_dir)
 
-#male_dist_store_base_names = ["male_dist_data_{}_{}".format(x, bp2str(dist_binsize)) for x in hg19_chrom_sizes.hg19_chrom_sizes.keys()]
-male_dist_store_base_names = ["male_dist_data_chrX_{}".format(bp2str(dist_binsize))]
-male_dist_store_files = [modpath(x, parent=male_dist_store_dir, suffix='.store') for x in male_dist_store_base_names]
+# #male_dist_store_base_names = ["male_dist_data_{}_{}".format(x, bp2str(dist_binsize)) for x in hg19_chrom_sizes.hg19_chrom_sizes.keys()]
+# male_dist_store_base_name = "male_dist_data_chrX_{}".format(bp2str(dist_binsize))
+# male_dist_store_file = modpath(male_dist_store_base_name, parent=male_dist_store_dir, suffix='.hdf')
 
-g = gwf.target("build_male_dist_datasets1", inputs=male_dist_file_names, outputs=male_dist_store_files, 
-    memory='80g', walltime='11:00:00') << """
+# g = gwf.target("build_male_dist_datasets1", inputs=male_dist_file_names, outputs=[male_dist_store_file], 
+#     memory='80g', walltime='11:00:00') << """
 
-    source activate simons
-    python scripts/build_male_dist_datasets.py \
-        --dist-dir {dist_dir} \
-        --result-dir {dist_store_dir} \
-        --meta-data-dir {metadata_dir} \
-        --result-file-prefix male_dist_data
+#     source activate simons
+#     python scripts/build_male_dist_datasets.py \
+#         --dist-dir {dist_dir} \
+#         --meta-data-dir {metadata_dir} \
+#         --out-file {out_file}
 
-""".format(dist_dir=male_dist_dir, dist_store_dir=male_dist_store_dir, metadata_dir=metadata_dir)
+# """.format(dist_dir=male_dist_dir, out_file=male_dist_store_file, metadata_dir=metadata_dir)
 
-#################################################################################
-# same but with ampliconic regions masked out
-#################################################################################
+# #################################################################################
+# # Call sweeps on the distance data with given pwdist_cutoff and min_sweep_clade_size
+# #################################################################################
 
-male_dist_ampl_masked_store_dir = os.path.join(mydir, 'steps', 'male_dist_ampl_masked_stores')
-if not os.path.exists(male_dist_ampl_masked_store_dir):
-    os.makedirs(male_dist_ampl_masked_store_dir)
+# male_dist_sweep_data_file = os.path.join(male_dist_store_dir, "sweep_data_{}_{}.hdf".format(analysis_globals.pwdist_cutoff, 
+#                                                                                      analysis_globals.min_sweep_clade_size))
+# gwf.target_from_template('male_dist_sweep_data', sweep_data(male_dist_store_file, male_dist_sweep_data_file))
 
-#male_dist_store_base_names = ["male_dist_data_{}_{}".format(x, bp2str(dist_binsize)) for x in hg19_chrom_sizes.hg19_chrom_sizes.keys()]
-male_dist_ampl_masked_store_base_names = ["male_dist_data_chrX_{}".format(bp2str(dist_binsize))]
-male_dist_ampl_masked_store_files = [modpath(x, parent=male_dist_ampl_masked_store_dir, suffix='.store') for x in male_dist_ampl_masked_store_base_names]
 
-g = gwf.target("build_male_dist_datasets2", inputs=male_ampl_masked_dist_file_names, outputs=male_dist_ampl_masked_store_files, 
-    memory='80g', walltime='11:00:00') << """
+# #################################################################################
+# # same but with ampliconic regions masked out
+# #################################################################################
 
-    source activate simons
-    python scripts/build_male_dist_datasets.py \
-        --dist-dir {dist_dir} \
-        --result-dir {dist_store_dir} \
-        --meta-data-dir {metadata_dir} \
-        --result-file-prefix male_dist_data
+# # dir for files
+# male_dist_ampl_masked_store_dir = os.path.join(mydir, 'steps', 'male_dist_ampl_masked_stores')
+# if not os.path.exists(male_dist_ampl_masked_store_dir):
+#     os.makedirs(male_dist_ampl_masked_store_dir)
 
-""".format(dist_dir=male_dist_dir_ampl_masked, dist_store_dir=male_dist_ampl_masked_store_dir, metadata_dir=metadata_dir)
+# male_dist_ampl_masked_store_base_name = "male_dist_data_chrX_{}".format(bp2str(dist_binsize))
+# male_dist_ampl_masked_store_file = modpath(male_dist_ampl_masked_store_base_name, parent=male_dist_ampl_masked_store_dir, suffix='.hdf')
+
+# g = gwf.target("build_male_dist_datasets2", inputs=male_ampl_masked_dist_file_names, outputs=[male_dist_ampl_masked_store_file], 
+#     memory='80g', walltime='11:00:00') << """
+
+#     source activate simons
+#     python scripts/build_male_dist_datasets.py \
+#         --dist-dir {dist_dir} \
+#         --meta-data-dir {metadata_dir} \
+#         --out-file {out_file}
+
+# """.format(dist_dir=male_dist_dir_ampl_masked, out_file=male_dist_ampl_masked_store_file, metadata_dir=metadata_dir)
+
+# #################################################################################
+# # Call sweeps on the distance data with given pwdist_cutoff and min_sweep_clade_size
+# #################################################################################
+
+# male_dist_ampl_masked_sweep_data_file = os.path.join(male_dist_ampl_masked_store_dir, "sweep_data_{}_{}.hdf".format(analysis_globals.pwdist_cutoff, 
+#                                                                                      analysis_globals.min_sweep_clade_size))
+# gwf.target_from_template('male_dist_ampl_masked_sweep_data', sweep_data(male_dist_ampl_masked_store_file, male_dist_ampl_masked_sweep_data_file))
+
 
 #################################################################################
 # same but for the admix-masked haplotypes
 #################################################################################
 
 
+# dir for files
 male_dist_admix_masked_store_dir = os.path.join(mydir, 'steps', 'male_dist_admix_masked_stores')
 if not os.path.exists(male_dist_admix_masked_store_dir):
     os.makedirs(male_dist_admix_masked_store_dir)
 
-male_dist_admix_masked_store_base_names = ["male_dist_data_chrX_{}".format(bp2str(dist_binsize))]
-male_dist_admix_masked_store_files = [modpath(x, parent=male_dist_admix_masked_store_dir, suffix='.store') for x in male_dist_admix_masked_store_base_names]
+male_dist_admix_masked_store_base_name = "male_dist_data_chrX_{}".format(bp2str(dist_binsize))
+male_dist_admix_masked_store_file = modpath(male_dist_admix_masked_store_base_name, parent=male_dist_admix_masked_store_dir, suffix='.hdf')
 
-g = gwf.target("build_male_dist_admix_masked_datasets1", inputs=male_admix_masked_dist_file_names, outputs=male_dist_admix_masked_store_files, 
+g = gwf.target("build_male_dist_admix_masked_datasets1", inputs=male_admix_masked_dist_file_names, outputs=[male_dist_admix_masked_store_file], 
     memory='80g', walltime='11:00:00') << """
 
     source activate simons
     python scripts/build_male_dist_admix_masked_datasets.py \
         --dist-dir {dist_dir} \
-        --result-dir {dist_store_dir} \
         --meta-data-dir {metadata_dir} \
-        --result-file-prefix male_dist_data
+        --out-file {out_file}
 
-""".format(dist_dir=male_admix_masked_dist_dir, dist_store_dir=male_dist_admix_masked_store_dir, metadata_dir=metadata_dir)
+""".format(dist_dir=male_admix_masked_dist_dir, out_file=male_dist_admix_masked_store_file, metadata_dir=metadata_dir)
 
 #################################################################################
-# same but for the ampliconic region masked AND admix-masked haplotypes
+# Call sweeps on the distance data with given pwdist_cutoff and min_sweep_clade_size
 #################################################################################
 
+male_dist_admix_masked_sweep_data_file = os.path.join(male_dist_admix_masked_store_dir, "sweep_data_{}_{}.hdf".format(analysis_globals.pwdist_cutoff, 
+                                                                                     analysis_globals.min_sweep_clade_size))
+gwf.target_from_template('male_dist_admix_masked_sweep_data', sweep_data(male_dist_admix_masked_store_file, male_dist_admix_masked_sweep_data_file))
 
-male_dist_ampl_and_admix_masked_store_dir = os.path.join(mydir, 'steps', 'male_dist_ampl_and_admix_masked_stores')
-if not os.path.exists(male_dist_ampl_and_admix_masked_store_dir):
-    os.makedirs(male_dist_ampl_and_admix_masked_store_dir)
 
-male_dist_ampl_and_admix_masked_store_base_names = ["male_dist_data_chrX_{}".format(bp2str(dist_binsize))]
-male_dist_ampl_and_admix_masked_store_files = [modpath(x, parent=male_dist_ampl_and_admix_masked_store_dir, suffix='.store') for x in male_dist_ampl_and_admix_masked_store_base_names]
+# #################################################################################
+# # same but for the ampliconic region masked AND admix-masked haplotypes
+# #################################################################################
 
-g = gwf.target("build_male_dist_admix_masked_datasets2", inputs=male_ampl_and_admix_masked_dist_file_names, outputs=male_dist_ampl_and_admix_masked_store_files, 
-    memory='80g', walltime='11:00:00') << """
 
-    source activate simons
-    python scripts/build_male_dist_admix_masked_datasets.py \
-        --dist-dir {dist_dir} \
-        --result-dir {dist_store_dir} \
-        --meta-data-dir {metadata_dir} \
-        --result-file-prefix male_dist_data
+# # dir for files
+# male_dist_ampl_and_admix_masked_store_dir = os.path.join(mydir, 'steps', 'male_dist_ampl_and_admix_masked_stores')
+# if not os.path.exists(male_dist_ampl_and_admix_masked_store_dir):
+#     os.makedirs(male_dist_ampl_and_admix_masked_store_dir)
 
-""".format(dist_dir=male_ampl_and_admix_masked_dist_dir, dist_store_dir=male_dist_ampl_and_admix_masked_store_dir, metadata_dir=metadata_dir)
+# male_dist_ampl_and_admix_masked_store_base_name = "male_dist_data_chrX_{}".format(bp2str(dist_binsize))
+# male_dist_ampl_and_admix_masked_store_file = modpath(male_dist_ampl_and_admix_masked_store_base_name, parent=male_dist_ampl_and_admix_masked_store_dir, suffix='.store')
 
+# g = gwf.target("build_male_dist_admix_masked_datasets2", inputs=male_ampl_and_admix_masked_dist_file_names, outputs=[male_dist_ampl_and_admix_masked_store_file], 
+#     memory='80g', walltime='11:00:00') << """
+
+#     source activate simons
+#     python scripts/build_male_dist_admix_masked_datasets.py \
+#         --dist-dir {dist_dir} \
+#         --meta-data-dir {metadata_dir} \
+#         --out-file {out_file}
+
+# """.format(dist_dir=male_ampl_and_admix_masked_dist_dir, out_file=male_dist_ampl_and_admix_masked_store_file, metadata_dir=metadata_dir)
+
+
+# #################################################################################
+# # Call sweeps on the distance data with given pwdist_cutoff and min_sweep_clade_size
+# #################################################################################
+
+# male_dist_ampl_and_admix_masked_sweep_data_file = os.path.join(male_dist_ampl_and_admix_masked_store_dir, "sweep_data_{}_{}.hdf".format(analysis_globals.pwdist_cutoff, 
+#                                                                                      analysis_globals.min_sweep_clade_size))
+# gwf.target_from_template('male_dist_ampl_and_admix_masked_sweep_data', sweep_data(male_dist_ampl_and_admix_masked_store_file, male_dist_ampl_and_admix_masked_sweep_data_file))
 
 
 #################################################################################
 # compute additional diffs between archaic female pseudohaplotids and all male x haplotypes
 #################################################################################
 
+# dir for files
 archaic_dist_dir = os.path.join(mydir, 'steps', 'archaic_x_pseudohaploid_dist')
 if not os.path.exists(archaic_dist_dir):
     os.makedirs(archaic_dist_dir)
@@ -877,121 +930,26 @@ for file1, file2 in itertools.product(sorted(male_x_haploids), archaic_x_pseudoh
 # Build distance data sets for archaic pseudohaploids and male x chromosomes
 #################################################################################
 
+# dir for files
 archaic_dist_store_dir = os.path.join(mydir, 'steps', 'archaic_dist_stores')
 if not os.path.exists(archaic_dist_store_dir):
     os.makedirs(archaic_dist_store_dir)
 
 #male_dist_store_base_names = ["male_dist_data_{}_{}".format(x, bp2str(dist_binsize)) for x in hg19_chrom_sizes.hg19_chrom_sizes.keys()]
-archaic_dist_store_base_names = ["archaic_dist_data_chrX_{}".format(bp2str(dist_binsize))]
-archaic_dist_store_files = [modpath(x, parent=archaic_dist_store_dir, suffix='.store') for x in archaic_dist_store_base_names]
+archaic_dist_store_base_name = "archaic_dist_data_chrX_{}".format(bp2str(dist_binsize))
+archaic_dist_store_file = modpath(archaic_dist_store_base_name, parent=archaic_dist_store_dir, suffix='.hdf')
 
-g = gwf.target("build_archaic_dist_datasets", inputs=archaic_dist_file_names, outputs=archaic_dist_store_files, 
+g = gwf.target("build_archaic_dist_datasets", inputs=archaic_dist_file_names, outputs=[archaic_dist_store_file], 
     memory='80g', walltime='11:00:00') << """
 
     source activate simons
     python scripts/build_archaic_dist_datasets.py \
         --dist-dir {dist_dir} \
-        --result-dir {dist_store_dir} \
         --meta-data-dir {metadata_dir} \
-        --result-file-prefix archaic_dist_data
+        --out-file {out_file}
 
-""".format(dist_dir=archaic_dist_dir, dist_store_dir=archaic_dist_store_dir, metadata_dir=metadata_dir)
+""".format(dist_dir=archaic_dist_dir, out_file=archaic_dist_store_file, metadata_dir=metadata_dir)
 
-
-# #################################################################################
-# # extract ust_ishim X
-# #################################################################################
-
-# ust_ishim_x_dir = os.path.join(mydir, 'steps', 'ust_ishim_x')
-# if not os.path.exists(ust_ishim_x_dir):
-#     os.makedirs(ust_ishim_x_dir)
-
-# ust_ishim_x_pseudhaploid_files_names = list()
-# for i, ust_ishim_pseud in enumerate(ust_ishim_pseudohaploid_file_names):
-#     x_only_file = modpath(ust_ishim_pseud, parent=ust_ishim_x_dir)
-#     ust_ishim_x_pseudhaploid_files_names.append(x_only_file)
-
-#     gwf.target_from_template("extract_ust_ishim_x_{}".format(i), 
-#         extract_x(full_genome=str(ust_ishim_pseud), only_x=str(x_only_file)))
-
-
-# # #################################################################################
-# # # mask admxiture segments in male x chromosomes
-# # #################################################################################
-
-# # ust_ishim_admix_masked_male_x_haploids_dir = os.path.join(mydir, 'steps', 'ust_ishim_male_x_haploids_admix_masked')
-# # if not os.path.exists(ust_ishim_admix_masked_male_x_haploids_dir):
-# #     os.makedirs(ust_ishim_admix_masked_male_x_haploids_dir)
-
-# # ust_ishim_admix_masked_male_x_haploids = [modpath(x, parent=admix_masked_male_x_haploids_dir, suffix='.fa') for x in male_x_haploids]
-
-# # min_admix_post_prob = 0.8
-
-# # laurits_admix_pred_file = os.path.join(mydir, 'data/laurits_data/RestofworldHMMHaploid_samePAR.txt')
-
-# # for i, (unmasked, masked) in enumerate(zip(male_x_haploids, admix_masked_male_x_haploids)):
-# #     gwf.target_from_template("admixmask_x_{}".format(i), 
-# #         admix_mask(unmasked_file=str(unmasked), masked_file=str(masked), 
-# #         admix_pred_file=laurits_admix_pred_file, min_post_prob=min_admix_post_prob))
-
-
-# #################################################################################
-# # compute admix masked diffs to ust_ishim pseudohaploids in windows over male haplotypes
-# #################################################################################
-
-# male_ust_ishim_dist_dir = os.path.join(mydir, 'steps', 'male_x_haploid_ust_ishim_dist_admix_masked')
-# if not os.path.exists(male_ust_ishim_dist_dir):
-#     os.makedirs(male_ust_ishim_dist_dir)
-
-# male_ust_ishim_dist_file_names = list()
-
-# i = 0
-
-# # iter male haploid pairs
-# for file1 in sorted(male_x_haploids):
-#     for file2 in ust_ishim_x_pseudhaploid_files_names:
-
-#         indiv1, hap1 = re.search(r'/([^/]+)-([AB]).fa', str(file1)).groups() 
-#         indiv2, hap2 = re.search(r'/([^/]+)-([AB]).fa', str(file2)).groups() 
-
-#         # open files for the pair of pseudohaploids to compare
-#         f1 = modpath(file1, parent=male_x_haploids_dir)
-#         f2 = modpath(file2, parent=pseudohaploid_dir)
-
-#         output_base_name = '{}_{}_{}_{}_{}.pickle' .format(indiv1, hap1, indiv2, hap2, bp2str(dist_binsize))
-#         out_file_name = modpath(output_base_name, parent=male_ust_ishim_dist_dir)
-
-#         male_ust_ishim_dist_file_names.append(out_file_name)
-
-#         gwf.target_from_template('male_ust_ishim_dist_windows_{}'.format(i), admix_masked_dist_for_x_pair_template(str(f1), str(f2), 
-#             dist_binsize, 'NA', indiv1, hap1, indiv2, hap2, str(out_file_name)))
-
-#         i += 1
-
-
-# #################################################################################
-# # Build ust_ishim admix masked distance data sets for each male chromosome with added meta info
-# #################################################################################
-
-# male_ust_ishim_dist_store_dir = os.path.join(mydir, 'steps', 'male_ust_ishim_dist_admix_masked_stores')
-# if not os.path.exists(male_ust_ishim_dist_store_dir):
-#     os.makedirs(male_ust_ishim_dist_store_dir)
-
-# #male_dist_store_base_names = ["male_dist_data_{}_{}".format(x, bp2str(dist_binsize)) for x in hg19_chrom_sizes.hg19_chrom_sizes.keys()]
-# male_ust_ishim_dist_store_base_names = ["male_ust_ishim_dist_data_chrX_{}".format(bp2str(dist_binsize))]
-# male_ust_ishim_dist_store_files = [modpath(x, parent=male_ust_ishim_dist_store_dir, suffix='.store') for x in male_ust_ishim_dist_store_base_names]
-
-# g = gwf.target("build_male_ust_ishim_dist_datasets", inputs=male_ust_ishim_dist_file_names, outputs=male_ust_ishim_dist_store_files, 
-#     memory='80g', walltime='11:00:00') << """
-
-#     source activate simons
-#     python scripts/build_male_dist_admix_masked_datasets.py \
-#         --dist-dir {dist_dir} \
-#         --result-dir {dist_store_dir} \
-#         --meta-data-dir {metadata_dir} \
-#         --result-file-prefix male_ust_ishim_dist_data
-
-# """.format(dist_dir=male_ust_ishim_dist_dir, dist_store_dir=male_ust_ishim_dist_store_dir, metadata_dir=metadata_dir)
 
 #################################################################################
 # make fasta alignments of male x chromosomes
@@ -1001,8 +959,8 @@ argweaver_binsize = 100000
 
 def argweaver_input_targets(region_label, male_x_haploids):
 
+    # dir for files
     argweaver_input_dir = os.path.join(mydir, 'steps', 'argweaver', 'input', region_label)
-
     if not os.path.exists(argweaver_input_dir):
         os.makedirs(argweaver_input_dir)
 
@@ -1088,6 +1046,7 @@ for region_label in region_labels:
 excluded_pops = ','.join(simons_meta_data.excluded_populations)
 excluded_indivs = ','.join(simons_meta_data.excluded_individuals)
 
+# dir for files
 annotated_output_dir = os.path.join(mydir, 'steps', 'argweaver', 'annotated_output', 'World')
 if not os.path.exists(annotated_output_dir):
     os.makedirs(annotated_output_dir)
@@ -1144,17 +1103,69 @@ for region_label in ['World']:
 # slim simulations
 #################################################################################
 
-# slim_file = 'scripts/sweep_after_bottle.slim'
-# slim_sub_dir = modpath(slim_file, parent='', suffix='')
-# slim_output_dir = os.path.join(mydir, 'steps', 'slim', slim_sub_dir)
-# if not os.path.exists(slim_output_dir):
-#     os.makedirs(slim_output_dir)
+slim_file_list = ['scripts/bottle.slim', 
+                  'scripts/complete_before_bottle.slim',                  
+                  'scripts/complete_in_bottle.slim',                  
+                  'scripts/complete_after_bottle.slim',
+                  'scripts/partial_before_bottle.slim',                  
+                  'scripts/partial_in_bottle.slim',                  
+                  'scripts/partial_after_bottle.slim']
 
-# for i in range(100):
-#     for selcoef in [0.01, 0.05, 0.1, 0.2]:
-#         sim_output_prefix = os.path.join(slim_output_dir, '{}_{}'.format(i, int(selcoef*100)))
-#         gwf.target_from_template('slimsim_{}_{}'.format(i, int(selcoef*100)), 
-#             slim_sim(selcoef, slim_file, sim_output_prefix))
+slim_tree_files = list()
+slim_dist_files = list()
+
+simulations_dir = os.path.join(mydir, 'steps', 'slim', 'simulations')
+
+for slim_file in slim_file_list:
+
+    slim_sub_dir = modpath(slim_file, parent='', suffix='')
+    slim_output_dir = os.path.join(simulations_dir, slim_sub_dir)
+    if not os.path.exists(slim_output_dir):
+        os.makedirs(slim_output_dir)
+
+    for i in range(10):
+        for selcoef in [0.01, 0.05, 0.1, 0.2]:
+            sim_output_prefix = os.path.join(slim_output_dir, '{}_{}_{}'.format(slim_sub_dir, i, int(selcoef*100)))
+            slim_tree_file = sim_output_prefix + '.trees'
+            slim_tree_files.append(slim_tree_file)
+            slim_dist_file = sim_output_prefix + '.hdf'
+            slim_dist_files.append(slim_dist_file)
+            gwf.target_from_template('{}_{}_{}'.format(slim_sub_dir, i, int(selcoef*100)), 
+                slim_sim(selcoef, analysis_globals.gen_time, 
+                '{:.12f}'.format(analysis_globals.mut_per_year), 
+                slim_file, slim_tree_file, slim_dist_file))
+
+
+#################################################################################
+# calling sweeps on slim simulations
+#################################################################################
+
+slim_sweep_data_dir = os.path.join(mydir, 'steps', 'slim', 'sweep_data')
+if not os.path.exists(slim_sweep_data_dir):
+    os.makedirs(slim_sweep_data_dir)
+
+slim_sweep_data_files = list()
+for i, slim_dist_file in enumerate(slim_dist_files):
+    slim_sweep_data_file = modpath(slim_dist_file, parent=slim_sweep_data_dir)
+    slim_sweep_data_files.append(slim_sweep_data_file)
+    gwf.target_from_template('slim_sweep_data_{}'.format(i), sweep_data(slim_dist_file, slim_sweep_data_file))
+
+
+#################################################################################
+# compute prop swept for all slim sweep data in a file that includes simulation info
+#################################################################################
+
+slim_summary_file = os.path.join(mydir, 'steps', 'slim', 'slim_summary.hdf')
+
+g = gwf.target("slim_summary", 
+    inputs=slim_sweep_data_files, outputs=[slim_summary_file], 
+    memory='10g', walltime='11:00:00') << """
+
+    source activate simons
+    python scripts/slim_summary.py {slim_sweep_data_dir} {out_file}
+
+""".format(slim_sweep_data_dir=slim_sweep_data_dir, out_file=slim_summary_file)
+
 
 #################################################################################
 

@@ -643,25 +643,41 @@ def compute_tree_stats(input_table_file, output_hdf_file, component_hdf_file, co
 
 
 
-def slim_sim(selcoef, slim_file, output_prefix):
+def slim_sim(selcoef, gen_time, mut_per_year, slim_file, slim_tree_file, slim_dist_file):
 
     options = {'memory': '18g',
                'walltime': '00:30:00'
               } 
 
-    tree_output_file = output_prefix + '.trees'
-    hdf_output_file = output_prefix + '.hdf'
-
     spec = """
 
     source activate simons
     python scripts/slim_trees.py --selcoef {selcoef} --samples 100 \
-        --window 100000 {slim_file} {tree_output} {hdf_output}
+        --window 100000 --generationtime {gen_time} --mutationrate {mut_per_year} {slim_file} {tree_output} {hdf_output}
 
-    """.format(selcoef=selcoef, slim_file=slim_file, 
-            tree_output=tree_output_file, hdf_output=hdf_output_file)
+    """.format(selcoef=selcoef, gen_time=gen_time, mut_per_year=mut_per_year,
+            slim_file=slim_file, tree_output=slim_tree_file, hdf_output=slim_dist_file)
 
-    return [], [tree_output_file, hdf_output_file], options, spec
+    return [], [slim_tree_file, slim_dist_file], options, spec
+
+
+
+def sweep_data(dist_file, sweep_data_file):
+
+    options = {'memory': '100g',
+               'walltime': '03:00:00'
+              } 
+
+
+    spec = """
+
+    source activate simons
+    python scripts/sweep_calling.py {dist_file} {sweep_data_file}
+
+    """.format(dist_file=dist_file, sweep_data_file=sweep_data_file)
+
+    return [dist_file], [sweep_data_file], options, spec
+
 
 
 # def summary_hdf_store(summary_files, store_file):

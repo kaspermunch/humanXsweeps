@@ -11,8 +11,9 @@ from hg19_chrom_sizes import hg19_chrom_sizes as chromosome_lengths
 parser = argparse.ArgumentParser()
 parser.add_argument("--dist-dir", dest="dist_dir", type=Path)
 parser.add_argument("--meta-data-dir", dest="meta_data_dir", type=Path)
-parser.add_argument("--result-dir", dest="result_dir", type=Path)
-parser.add_argument("--result-file-prefix", dest="result_file_prefix", type=str, default='dist_data')
+parser.add_argument("--out-file", dest="out_file", type=Path)
+# parser.add_argument("--result-dir", dest="result_dir", type=Path)
+# parser.add_argument("--result-file-prefix", dest="result_file_prefix", type=str, default='dist_data')
 args = parser.parse_args()
 
 # easy loading of meta data in a consistent manner across code
@@ -94,12 +95,14 @@ dist_data['region_2'] = pandas.Categorical(dist_data.region_label_2, categories=
 # sort
 dist_data.sort_values(by=['chrom', 'region_id_1', 'indiv_1', 'start'], inplace=True)
 
-# write stores for each chromosome
-groups = dist_data.groupby('chrom')
-for chrom, group in groups:
-#    store_path = args.result_dir / 'dist_data_chr{}_100kb.store'.format(chrom)
-    store_path = args.result_dir / '{}_chr{}_100kb.store'.format(args.result_file_prefix, chrom)
-    group.to_hdf(str(store_path), 'df',  mode='w', format="table", data_columns=['indiv_1', 'start', 'end']) # we index all data columns 
+# # write stores for each chromosome
+# groups = dist_data.groupby('chrom')
+# for chrom, group in groups:
+# #    store_path = args.result_dir / 'dist_data_chr{}_100kb.store'.format(chrom)
+#     store_path = args.result_dir / '{}_chr{}_100kb.store'.format(args.result_file_prefix, chrom)
+#     group.to_hdf(str(store_path), 'df',  mode='w', format="table", data_columns=['indiv_1', 'start', 'end']) # we index all data columns 
+
+dist_data.to_hdf(str(args.out_file), 'df',  mode='w', format="table", data_columns=['indiv_1', 'start', 'end']) # we index all data columns 
 
 
 
