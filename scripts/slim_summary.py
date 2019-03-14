@@ -13,9 +13,11 @@ args = parser.parse_args()
 
 lst = list()
 for file_path in args.sweep_data_dir.glob('**/*.hdf'):
-
-    simulation, replication, selection_percent = \
+    #sweep_type, pop_size, bottle_start, bottle_end, bottle_pop_size, sweep_start, int(selcoef*100), replication
+    simulation, selection_percent, replication = \
         file_path.with_suffix('').name.rsplit('_', maxsplit=2)
+    # simulation, replication, selection_percent = \
+    #     file_path.with_suffix('').name.rsplit('_', maxsplit=2)
 
     sweep_data = pandas.read_hdf(str(file_path))
 

@@ -2,12 +2,85 @@ from itertools import combinations
 import argparse
 import random
 import subprocess
-import re, os
+import re, os, sys
 import tempfile
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
 import msprime, pyslim
+
+demography = r'''
+initialize() {
+	initializeTreeSeq();
+	initializeMutationRate(0);
+	initializeMutationType("m1", 0.5, "f", 0.0);
+	initializeMutationType("m2", 1.0, "f", SEL_COEF);        // introduced
+	initializeGenomicElementType("g1", m1, 1.0);
+	initializeGenomicElement(g1, 0, 10e6-1);
+	initializeRecombinationRate(1e-8);
+}
+1 {
+	defineConstant("simID", getSeed());
+	sim.addSubpop("p1", NORMAL_N);
+}
+BOTTLE_START {
+	p1.setSubpopulationSize(BOTTLE_N);
+}
+BOTTLE_END {
+	p1.setSubpopulationSize(NORMAL_N);
+}
+6896 {
+    sim.treeSeqOutput("OUTPUT_FILE");
+	sim.simulationFinished();
+}
+'''
+
+complete_sweep = r'''
+SWEEP_START late() {
+	target = sample(p1.genomes, 1);
+	target.addNewDrawnMutation(m2, 5e6);
+	sim.treeSeqOutput("TMPDIR/slim_" + simID + ".trees");
+}
+SWEEP_START: late() {
+	if (sim.countOfMutationsOfType(m2) == 0) {
+		if (sum(sim.substitutions.mutationType == m2) == 1) {
+			cat(simID + ": FIXED\n");
+			sim.deregisterScriptBlock(self);
+		} else {
+			cat(simID + ": LOST - RESTARTING\n");
+			sim.readFromPopulationFile("TMPDIR/slim_" + simID + ".trees");
+			setSeed(rdunif(1, 0, asInteger(2^32) - 1));
+		}
+	}
+}
+'''
+
+partial_sweep = r'''
+SWEEP_START late() {
+	target = sample(p1.genomes, 1);
+	target.addNewDrawnMutation(m2, 5e6);
+	sim.treeSeqOutput("TMPDIR/slim_" + simID + ".trees");
+}
+SWEEP_START: late() {
+	mut = sim.mutationsOfType(m2);
+	if (size(mut) == 1)
+	{
+		if (sim.mutationFrequencies(NULL, mut) > 0.5)
+		{
+			cat(simID + ": ESTABLISHED\n");
+			sim.deregisterScriptBlock(self);
+		}
+	}
+	else
+	{
+		cat(simID + ": LOST – RESTARTING\n");
+		sim.readFromPopulationFile("TMPDIR/slim_" + simID + ".trees");
+		setSeed(rdunif(1, 0, asInteger(2^32) - 1));
+		
+	}
+}
+'''
+
 
 random.seed(7)
 
@@ -17,7 +90,14 @@ parser.add_argument("--window", type=int)
 parser.add_argument("--samples", type=int)
 parser.add_argument("--mutationrate", type=float)
 parser.add_argument("--generationtime", type=int)
-parser.add_argument("slurm_script", type=str)
+parser.add_argument("--sweep", type=str, choices=['partial', 'complete', 'nosweep'])
+parser.add_argument("--sweepstart", type=int)
+parser.add_argument("--bottlestart", type=int)
+parser.add_argument("--bottleend", type=int)
+parser.add_argument("--bottlepopsize", type=int)
+parser.add_argument("--popsize", type=int)
+parser.add_argument("--dumpscript", action='store_true')
+#parser.add_argument("slurm_script", type=str)
 parser.add_argument("trees_file", type=str)
 parser.add_argument("hdf_file", type=str)
 args = parser.parse_args()
@@ -28,10 +108,40 @@ window_size = args.window
 if not os.path.isabs(args.trees_file):
     args.trees_file = os.path.abspath(args.trees_file)
 
-# read slim template script file and replace output file
-with open(args.slurm_script) as f:
-    slurm_script = re.sub('(treeSeqOutput\(")([^(]+)("\))', 
-        r'\1{}\3'.format(args.trees_file), f.read())
+#############################################
+
+# # read slim template script file and replace output file
+# with open(args.slurm_script) as f:
+#     slurm_script = re.sub('(treeSeqOutput\(")([^(]+)("\))', 
+#         r'\1{}\3'.format(args.trees_file), f.read())
+
+if args.sweep == 'partial':
+    slurm_script = demography + partial_sweep
+elif args.sweep == 'complete':
+    slurm_script = demography + complete_sweep
+else:
+    slurm_script = demography
+
+
+
+slurm_script = slurm_script.replace('SWEEP_START', str(args.sweepstart))
+slurm_script = slurm_script.replace('BOTTLE_START', str(args.bottlestart))
+slurm_script = slurm_script.replace('BOTTLE_END', str(args.bottleend))
+slurm_script = slurm_script.replace('BOTTLE_N', str(args.bottlepopsize))
+slurm_script = slurm_script.replace('NORMAL_N', str(args.popsize))
+slurm_script = slurm_script.replace('OUTPUT_FILE', str(args.trees_file))
+slurm_script = slurm_script.replace('SEL_COEF', str(args.selcoef))
+if 'GWF_JOBID' in os.environ:
+	slurm_script = slurm_script.replace('TMPDIR', '/scratch/' + os.environ['GWF_JOBID'])
+else:
+	slurm_script = slurm_script.replace('TMPDIR', '/tmp')
+
+if args.dumpscript:
+	print(slurm_script)
+	sys.exit()
+
+
+###############################################
 
 # write slim script file with the right output name
 slurm_script_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
@@ -39,7 +149,7 @@ slurm_script_file.write(slurm_script)
 slurm_script_file.close()
 
 # run slim
-cmd = './slim -d s={} {}'.format(args.selcoef, slurm_script_file.name)
+cmd = './slim {}'.format(slurm_script_file.name)
 p = subprocess.Popen(cmd.split(), 
     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 stdout, stderr = p.communicate()

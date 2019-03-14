@@ -71,7 +71,6 @@ def bp2str(n):
 
 individuals, populations, regions = simons_meta_data.get_meta_data()
 
-
 #################################################################################
 # Project root dir
 #################################################################################
@@ -1096,47 +1095,50 @@ for region_label in ['World']:
 #                 component_hdf_file, component_stats_hdf_file,
 #                 sweep_sister_clade_hdf_file, nonsweep_sister_clade_hdf_file))
 
-
-
-
 #################################################################################
 # slim simulations
 #################################################################################
 
-slim_file_list = ['scripts/bottle.slim', 
-                  'scripts/complete_before_bottle.slim',                  
-                  'scripts/complete_in_bottle.slim',                  
-                  'scripts/complete_after_bottle.slim',
-                  'scripts/partial_before_bottle.slim',                  
-                  'scripts/partial_in_bottle.slim',                  
-                  'scripts/partial_after_bottle.slim']
-
 slim_tree_files = list()
 slim_dist_files = list()
 
+# how many to simulate:
+nr_non_africans = sum(x['Region'] != 'Africa' and x['Genetic sex assignment'] == 'XY' for x in individuals.values())
+
 simulations_dir = os.path.join(mydir, 'steps', 'slim', 'simulations')
 
-for slim_file in slim_file_list:
+slim_output_dir = simulations_dir
 
-    slim_sub_dir = modpath(slim_file, parent='', suffix='')
-    slim_output_dir = os.path.join(simulations_dir, slim_sub_dir)
-    if not os.path.exists(slim_output_dir):
-        os.makedirs(slim_output_dir)
+for pop_size in [20000, 10000]:   # to reflect autosomes and X
+    for bottle_start, bottle_end, bottle_pop_size in [(5861, 3447, 1000), (5459, 3850, 678), (5056, 4252, 345)]:
+        for sweep_type in ['complete', 'partial', 'nosweep']:
+            for sweep_start in [6206, 5171, 3102]:   # 20000, 50000, 110000 yrs
+                for selcoef in [0.01, 0.05, 0.1, 0.2]: 
 
-    for i in range(10):
-        for selcoef in [0.01, 0.05, 0.1, 0.2]:
-            sim_output_prefix = os.path.join(slim_output_dir, '{}_{}_{}'.format(slim_sub_dir, i, int(selcoef*100)))
-            slim_tree_file = sim_output_prefix + '.trees'
-            slim_tree_files.append(slim_tree_file)
-            slim_dist_file = sim_output_prefix + '.hdf'
-            slim_dist_files.append(slim_dist_file)
-            gwf.target_from_template('{}_{}_{}'.format(slim_sub_dir, i, int(selcoef*100)), 
-                slim_sim(selcoef, analysis_globals.gen_time, 
-                '{:.12f}'.format(analysis_globals.mut_per_year), 
-                slim_file, slim_tree_file, slim_dist_file))
+                    id_str = '{}_{}_{}_{}_{}_{}_{}'.format(sweep_type, pop_size, 
+                            bottle_start, bottle_end, bottle_pop_size, sweep_start, 
+                            int(selcoef*100))
+
+                    slim_output_dir = os.path.join(simulations_dir, id_str.replace('_', '/'))
+                    if not os.path.exists(slim_output_dir): os.makedirs(slim_output_dir)
+
+                    for i in range(1):
+
+                        sim_output_prefix = os.path.join(slim_output_dir, "{}_{}".format(id_str, i))
+                        slim_tree_file = sim_output_prefix + '.trees'
+                        slim_tree_files.append(slim_tree_file)
+                        slim_dist_file = sim_output_prefix + '.hdf'
+                        slim_dist_files.append(slim_dist_file)
+                        gwf.target_from_template("{}_{}".format(id_str, i),
+                            slim_sim(selcoef, analysis_globals.gen_time, 
+                            '{:.12f}'.format(analysis_globals.mut_per_year), 
+                            nr_non_africans,
+                            sweep_type, sweep_start, bottle_start, 
+                            bottle_end, pop_size, bottle_pop_size,
+                            slim_tree_file, slim_dist_file))
 
 
-#################################################################################
+##################################################################################
 # calling sweeps on slim simulations
 #################################################################################
 
@@ -1148,7 +1150,8 @@ slim_sweep_data_files = list()
 for i, slim_dist_file in enumerate(slim_dist_files):
     slim_sweep_data_file = modpath(slim_dist_file, parent=slim_sweep_data_dir)
     slim_sweep_data_files.append(slim_sweep_data_file)
-    gwf.target_from_template('slim_sweep_data_{}'.format(i), sweep_data(slim_dist_file, slim_sweep_data_file))
+    gwf.target_from_template('slim_sweep_data_{}'.format(i), sweep_data(slim_dist_file, slim_sweep_data_file, 
+                                                                        memory='8g', walltime='00:30:00'))
 
 
 #################################################################################
@@ -1159,7 +1162,7 @@ slim_summary_file = os.path.join(mydir, 'steps', 'slim', 'slim_summary.hdf')
 
 g = gwf.target("slim_summary", 
     inputs=slim_sweep_data_files, outputs=[slim_summary_file], 
-    memory='10g', walltime='11:00:00') << """
+    memory='10g', walltime='00:30:00') << """
 
     source activate simons
     python scripts/slim_summary.py {slim_sweep_data_dir} {out_file}

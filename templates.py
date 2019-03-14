@@ -643,7 +643,27 @@ def compute_tree_stats(input_table_file, output_hdf_file, component_hdf_file, co
 
 
 
-def slim_sim(selcoef, gen_time, mut_per_year, slim_file, slim_tree_file, slim_dist_file):
+# def slim_sim(selcoef, gen_time, mut_per_year, samples, slim_file, slim_tree_file, slim_dist_file):
+
+#     options = {'memory': '18g',
+#                'walltime': '00:30:00'
+#               } 
+
+#     spec = """
+
+#     source activate simons
+#     python scripts/slim_trees.py --selcoef {selcoef} --samples {samples} \
+#         --window 100000 --generationtime {gen_time} --mutationrate {mut_per_year} {slim_file} {tree_output} {hdf_output}
+
+#     """.format(selcoef=selcoef, gen_time=gen_time, mut_per_year=mut_per_year, samples=samples,
+#             slim_file=slim_file, tree_output=slim_tree_file, hdf_output=slim_dist_file)
+
+#     return [], [slim_tree_file, slim_dist_file], options, spec
+
+
+
+def slim_sim(selcoef, gen_time, mut_per_year, samples, sweep_type, sweep_start, bottle_start, 
+    bottle_end, pop_size, bottle_pop_size, slim_tree_file, slim_dist_file,):
 
     options = {'memory': '18g',
                'walltime': '00:30:00'
@@ -652,20 +672,23 @@ def slim_sim(selcoef, gen_time, mut_per_year, slim_file, slim_tree_file, slim_di
     spec = """
 
     source activate simons
-    python scripts/slim_trees.py --selcoef {selcoef} --samples 100 \
-        --window 100000 --generationtime {gen_time} --mutationrate {mut_per_year} {slim_file} {tree_output} {hdf_output}
-
-    """.format(selcoef=selcoef, gen_time=gen_time, mut_per_year=mut_per_year,
-            slim_file=slim_file, tree_output=slim_tree_file, hdf_output=slim_dist_file)
+    python scripts/slim_trees.py --selcoef {selcoef} --samples {samples} \
+        --window 100000 --generationtime {gen_time} --mutationrate {mut_per_year} \
+        --sweep {sweep_type} --sweepstart {sweep_start} --bottlestart {bottle_start} \
+        --bottleend {bottle_end} --popsize {pop_size} --bottlepopsize {bottle_pop_size} {tree_output} {hdf_output}
+            
+    """.format(selcoef=selcoef, gen_time=gen_time, mut_per_year=mut_per_year, samples=samples,
+            sweep_type=sweep_type, sweep_start=sweep_start, bottle_start=bottle_start, bottle_end=bottle_end,
+            pop_size=pop_size, bottle_pop_size=bottle_pop_size, tree_output=slim_tree_file, hdf_output=slim_dist_file)
 
     return [], [slim_tree_file, slim_dist_file], options, spec
 
 
 
-def sweep_data(dist_file, sweep_data_file):
+def sweep_data(dist_file, sweep_data_file, memory='100g', walltime='03:00:00'):
 
-    options = {'memory': '100g',
-               'walltime': '03:00:00'
+    options = {'memory': memory,
+               'walltime': walltime
               } 
 
 
