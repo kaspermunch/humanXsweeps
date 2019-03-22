@@ -9,7 +9,7 @@ import pandas as pd
 from pandas import DataFrame
 import msprime, pyslim
 
-demography = r'''
+initialization = r'''
 initialize() {
 	initializeTreeSeq();
 	initializeMutationRate(0);
@@ -18,19 +18,26 @@ initialize() {
 	initializeGenomicElementType("g1", m1, 1.0);
 	initializeGenomicElement(g1, 0, 10e6-1);
 	initializeRecombinationRate(1e-8);
+	initializeSex("CHROM");
 }
-1 {
+'''
+
+first = r'''
+GENERATION {
 	defineConstant("simID", getSeed());
-	sim.addSubpop("p1", NORMAL_N);
+	sim.addSubpop("p1", SIZE);
 }
-BOTTLE_START {
-	p1.setSubpopulationSize(BOTTLE_N);
+'''
+
+size_change = r'''
+GENERATION {
+	p1.setSubpopulationSize(SIZE);
 }
-BOTTLE_END {
-	p1.setSubpopulationSize(NORMAL_N);
-}
-6896 {
-    sim.treeSeqOutput("OUTPUT_FILE");
+'''
+
+finish = r'''
+TOTAL_GEN {
+	sim.treeSeqOutput("OUTPUT_FILE");
 	sim.simulationFinished();
 }
 '''
@@ -81,6 +88,19 @@ SWEEP_START: late() {
 }
 '''
 
+drive = '''
+// only positive selection in males
+fitness(m3) {
+	if (individual.sex == 'M') {
+		return 1.0 + mut.selectionCoeff;
+	} else {
+		return 1.0;
+	}
+}
+'''
+
+
+
 
 random.seed(7)
 
@@ -92,10 +112,11 @@ parser.add_argument("--mutationrate", type=float)
 parser.add_argument("--generationtime", type=int)
 parser.add_argument("--sweep", type=str, choices=['partial', 'complete', 'nosweep'])
 parser.add_argument("--sweepstart", type=int)
-parser.add_argument("--bottlestart", type=int)
-parser.add_argument("--bottleend", type=int)
-parser.add_argument("--bottlepopsize", type=int)
+parser.add_argument('--demography', nargs='+', type=str)
 parser.add_argument("--popsize", type=int)
+parser.add_argument("--chrom", type=str, choices=['X', 'A'])
+parser.add_argument("--x-size-reduction", dest='x_size_reduction', type=float)
+parser.add_argument("--totalgenerations", type=int)
 parser.add_argument("--dumpscript", action='store_true')
 #parser.add_argument("slurm_script", type=str)
 parser.add_argument("trees_file", type=str)
@@ -108,29 +129,34 @@ window_size = args.window
 if not os.path.isabs(args.trees_file):
     args.trees_file = os.path.abspath(args.trees_file)
 
-#############################################
+# initialization
+slurm_script = initialization.replace('SEL_COEF', str(args.selcoef)).replace('CHROM', args.chrom)
 
-# # read slim template script file and replace output file
-# with open(args.slurm_script) as f:
-#     slurm_script = re.sub('(treeSeqOutput\(")([^(]+)("\))', 
-#         r'\1{}\3'.format(args.trees_file), f.read())
+# end of simulation
+slurm_script += finish.replace('TOTAL_GEN', str(args.totalgenerations)).replace('OUTPUT_FILE', str(args.trees_file))
 
+# add size changes
+for pair in args.demography:
+	gen, size = pair.split(':')
+
+	if args.chrom == 'X':
+		size = str(int(int(size) * args.x_size_reduction))
+
+	if gen == '1':
+		slurm_script += first.replace('GENERATION', gen).replace('SIZE', size)
+	else:		
+		slurm_script += size_change.replace('GENERATION', gen).replace('SIZE', size)
+
+# add complete or partial sweep
 if args.sweep == 'partial':
-    slurm_script = demography + partial_sweep
+    slurm_script += partial_sweep.replace('SWEEP_START', str(args.sweepstart))
 elif args.sweep == 'complete':
-    slurm_script = demography + complete_sweep
-else:
-    slurm_script = demography
+    slurm_script += complete_sweep.replace('SWEEP_START', str(args.sweepstart))
 
+# make positive selection act on X only in males
+if args.chrom == 'X':
+	slurm_script += drive
 
-
-slurm_script = slurm_script.replace('SWEEP_START', str(args.sweepstart))
-slurm_script = slurm_script.replace('BOTTLE_START', str(args.bottlestart))
-slurm_script = slurm_script.replace('BOTTLE_END', str(args.bottleend))
-slurm_script = slurm_script.replace('BOTTLE_N', str(args.bottlepopsize))
-slurm_script = slurm_script.replace('NORMAL_N', str(args.popsize))
-slurm_script = slurm_script.replace('OUTPUT_FILE', str(args.trees_file))
-slurm_script = slurm_script.replace('SEL_COEF', str(args.selcoef))
 if 'GWF_JOBID' in os.environ:
 	slurm_script = slurm_script.replace('TMPDIR', '/scratch/' + os.environ['GWF_JOBID'])
 else:
@@ -139,9 +165,6 @@ else:
 if args.dumpscript:
 	print(slurm_script)
 	sys.exit()
-
-
-###############################################
 
 # write slim script file with the right output name
 slurm_script_file = tempfile.NamedTemporaryFile(mode='w', delete=False)

@@ -1095,9 +1095,21 @@ for region_label in ['World']:
 #                 component_hdf_file, component_stats_hdf_file,
 #                 sweep_sister_clade_hdf_file, nonsweep_sister_clade_hdf_file))
 
+
+
+
 #################################################################################
 # slim simulations
 #################################################################################
+
+# slim_file_list = ['scripts/bottle.slim', 
+#                   'scripts/complete_before_bottle.slim',                  
+#                   'scripts/complete_in_bottle.slim',                  
+#                   'scripts/complete_after_bottle.slim',
+#                   'scripts/partial_before_bottle.slim',                  
+#                   'scripts/partial_in_bottle.slim',                  
+#                   'scripts/partial_after_bottle.slim',
+#                   'scripts/complete_after_no_bottle.slim']
 
 slim_tree_files = list()
 slim_dist_files = list()
@@ -1109,34 +1121,55 @@ simulations_dir = os.path.join(mydir, 'steps', 'slim', 'simulations')
 
 slim_output_dir = simulations_dir
 
-for pop_size in [20000, 10000]:   # to reflect autosomes and X
-    for bottle_start, bottle_end, bottle_pop_size in [(5861, 3447, 1000), (5459, 3850, 678), (5056, 4252, 345)]:
-        for sweep_type in ['complete', 'partial', 'nosweep']:
-            for sweep_start in [6206, 5171, 3102]:   # 20000, 50000, 110000 yrs
-                for selcoef in [0.01, 0.05, 0.1, 0.2]: 
+total_sim_generations = 100000
 
-                    id_str = '{}_{}_{}_{}_{}_{}_{}'.format(sweep_type, pop_size, 
-                            bottle_start, bottle_end, bottle_pop_size, sweep_start, 
-                            int(selcoef*100))
+# pasted fro nb_25_slim_simulations notebook:
+standard_demography = \
+[(1, 20000),
+ (91379, 12000),
+ (94827, 6000),
+ (96551, 4000),
+ (97586, 3000),
+ (98275, 4000),
+ (98793, 6000),
+ (99137, 12000),
+ (99482, 20000),
+ (99793, 100000)]
 
-                    slim_output_dir = os.path.join(simulations_dir, id_str.replace('_', '/'))
-                    if not os.path.exists(slim_output_dir): os.makedirs(slim_output_dir)
+demographies = [('standard', standard_demography)]
 
-                    for i in range(1):
+# I SHOULD PRODUCE THE DEMOGRAPHIES HERE
+# IT WOULD BE NICER WITH YEARS IN THE NAMES OF FILES...
 
-                        sim_output_prefix = os.path.join(slim_output_dir, "{}_{}".format(id_str, i))
-                        slim_tree_file = sim_output_prefix + '.trees'
-                        slim_tree_files.append(slim_tree_file)
-                        slim_dist_file = sim_output_prefix + '.hdf'
-                        slim_dist_files.append(slim_dist_file)
-                        gwf.target_from_template("{}_{}".format(id_str, i),
-                            slim_sim(selcoef, analysis_globals.gen_time, 
-                            '{:.12f}'.format(analysis_globals.mut_per_year), 
-                            nr_non_africans,
-                            sweep_type, sweep_start, bottle_start, 
-                            bottle_end, pop_size, bottle_pop_size,
-                            slim_tree_file, slim_dist_file))
+chrom = 'X'
+#chrom = 'A'
+xreduction = 0.55 / 0.75
 
+for demog_name , demog in demographies:
+    for sweep_type in ['complete', 'partial', 'nosweep']:
+        for sweep_start in [98965, 98275]: #[98965, 98275, 97586, 96551]: # pasted fro nb_25_slim_simulations notebook
+            for selcoef in [0.1]: #[0.01, 0.05, 0.1, 0.2]: 
+
+                id_str = '{}_{}_{}_{}_{}'.format(demog_name, chrom, sweep_type, sweep_start, int(selcoef*100))
+
+                slim_output_dir = os.path.join(simulations_dir, id_str.replace('_', '/'))
+                if not os.path.exists(slim_output_dir): os.makedirs(slim_output_dir)
+
+                for i in range(10):
+                    sim_output_prefix = os.path.join(slim_output_dir, "{}_{}".format(id_str, i))
+                    slim_tree_file = sim_output_prefix + '.trees'
+                    slim_tree_files.append(slim_tree_file)
+                    slim_dist_file = sim_output_prefix + '.hdf'
+                    slim_dist_files.append(slim_dist_file)
+
+                    gwf.target_from_template("{}_{}".format(id_str, i),
+                        slim_sim(selcoef, analysis_globals.gen_time, 
+                        '{:.12f}'.format(analysis_globals.mut_per_year), 
+                        nr_non_africans,
+                        sweep_type, sweep_start, demog, 
+                        chrom, xreduction, 
+                        total_sim_generations,
+                        slim_tree_file, slim_dist_file))
 
 ##################################################################################
 # calling sweeps on slim simulations
