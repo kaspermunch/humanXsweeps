@@ -1126,50 +1126,68 @@ total_sim_generations = 100000
 # pasted fro nb_25_slim_simulations notebook:
 standard_demography = \
 [(1, 20000),
- (91379, 12000),
- (94827, 6000),
- (96551, 4000),
- (97586, 3000),
- (98275, 4000),
- (98793, 6000),
- (99137, 12000),
- (99482, 20000),
- (99793, 100000)]
-
-demographies = [('standard', standard_demography)]
+ (191379, 12000),
+ (194827, 6000),
+ (196551, 4000),
+ (197586, 3000),
+ (198275, 4000),
+ (198793, 6000),
+ (199137, 12000),
+ (199482, 20000),
+ (199793, 100000)]
 
 # I SHOULD PRODUCE THE DEMOGRAPHIES HERE
 # IT WOULD BE NICER WITH YEARS IN THE NAMES OF FILES...
 
+# named autosomal population size demographies:
+demographies = [('standard', standard_demography)]
+
+# make SLiM model X chromosome
 chrom = 'X'
-#chrom = 'A'
-xreduction = 0.55 / 0.75
 
-for demog_name , demog in demographies:
-    for sweep_type in ['complete', 'partial', 'nosweep']:
-        for sweep_start in [98965, 98275]: #[98965, 98275, 97586, 96551]: # pasted fro nb_25_slim_simulations notebook
-            for selcoef in [0.1]: #[0.01, 0.05, 0.1, 0.2]: 
+# x/autosome ratios:
+#x_auto_ratios = [0.55 * x for x in [1, 0.73]] # <- recuction below one reflects region pi vs. global pi in Africans.
+x_auto_ratios = [0.66 * x for x in [1, 0.73]]
 
-                id_str = '{}_{}_{}_{}_{}'.format(demog_name, chrom, sweep_type, sweep_start, int(selcoef*100))
+# mean per generation recombination rate in regions (new decode map):
+#rec_rates_per_gen = [0.465e-8 * x for x in [1, 2/4, 2/6]] # <- reductions below one reflect male/famale retios of 2 and 4
+rec_rates_per_gen = [0.465e-8, 1.16e-8]
 
-                slim_output_dir = os.path.join(simulations_dir, id_str.replace('_', '/'))
-                if not os.path.exists(slim_output_dir): os.makedirs(slim_output_dir)
+for x_auto_ratio in x_auto_ratios:
+    for rec_rate_per_gen in rec_rates_per_gen:
 
-                for i in range(10):
-                    sim_output_prefix = os.path.join(slim_output_dir, "{}_{}".format(id_str, i))
-                    slim_tree_file = sim_output_prefix + '.trees'
-                    slim_tree_files.append(slim_tree_file)
-                    slim_dist_file = sim_output_prefix + '.hdf'
-                    slim_dist_files.append(slim_dist_file)
+        assert chrom == 'X'
+        meiosis_rec_rate =  rec_rate_per_gen * 3 / 2
+        xreduction = x_auto_ratio / 0.75
+        
+        for demog_name, demog in demographies:
+            for sweep_type in ['nosweep']: #['complete', 'partial', 'nosweep']:
+                for sweep_start in [198275]: #[198965, 198275, 197586, 196551]: # pasted fro nb_25_slim_simulations notebook
+                    for selcoef in [0.1]: #[0.01, 0.05, 0.1, 0.2]: 
 
-                    gwf.target_from_template("{}_{}".format(id_str, i),
-                        slim_sim(selcoef, analysis_globals.gen_time, 
-                        '{:.12f}'.format(analysis_globals.mut_per_year), 
-                        nr_non_africans,
-                        sweep_type, sweep_start, demog, 
-                        chrom, xreduction, 
-                        total_sim_generations,
-                        slim_tree_file, slim_dist_file))
+                        id_str = '{}_{}_{}_{}_{}_{}_{}'.format(demog_name,
+                        round(x_auto_ratio*100), round(rec_rate_per_gen * 1e12),
+                        chrom, sweep_type, sweep_start, int(selcoef*100))
+
+                        slim_output_dir = os.path.join(simulations_dir, id_str.replace('_', '/'))
+                        if not os.path.exists(slim_output_dir): os.makedirs(slim_output_dir)
+
+                        for i in range(15):
+                            sim_output_prefix = os.path.join(slim_output_dir, "{}_{}".format(id_str, i))
+                            slim_tree_file = sim_output_prefix + '.trees'
+                            slim_tree_files.append(slim_tree_file)
+                            slim_dist_file = sim_output_prefix + '.hdf'
+                            slim_dist_files.append(slim_dist_file)
+
+                            gwf.target_from_template("{}_{}".format(id_str, i),
+                                slim_sim(selcoef, analysis_globals.gen_time, 
+                                '{:.12f}'.format(analysis_globals.mut_per_year), 
+                                meiosis_rec_rate,
+                                nr_non_africans,
+                                sweep_type, sweep_start, demog, 
+                                chrom, xreduction, 
+                                total_sim_generations,
+                                slim_tree_file, slim_dist_file))
 
 ##################################################################################
 # calling sweeps on slim simulations

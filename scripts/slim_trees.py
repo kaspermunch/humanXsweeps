@@ -17,7 +17,7 @@ initialize() {
 	initializeMutationType("m2", 1.0, "f", SEL_COEF);        // introduced
 	initializeGenomicElementType("g1", m1, 1.0);
 	initializeGenomicElement(g1, 0, 10e6-1);
-	initializeRecombinationRate(1e-8);
+	initializeRecombinationRate(REC_RATE);
 	initializeSex("CHROM");
 }
 '''
@@ -109,6 +109,7 @@ parser.add_argument("--selcoef", type=float)
 parser.add_argument("--window", type=int)
 parser.add_argument("--samples", type=int)
 parser.add_argument("--mutationrate", type=float)
+parser.add_argument("--recrate", type=float)
 parser.add_argument("--generationtime", type=int)
 parser.add_argument("--sweep", type=str, choices=['partial', 'complete', 'nosweep'])
 parser.add_argument("--sweepstart", type=int)
@@ -130,7 +131,10 @@ if not os.path.isabs(args.trees_file):
     args.trees_file = os.path.abspath(args.trees_file)
 
 # initialization
-slurm_script = initialization.replace('SEL_COEF', str(args.selcoef)).replace('CHROM', args.chrom)
+slurm_script = (initialization.replace('SEL_COEF', str(args.selcoef))
+							  .replace('CHROM', args.chrom)
+							  .replace('REC_RATE', str(args.recrate))
+				)
 
 # end of simulation
 slurm_script += finish.replace('TOTAL_GEN', str(args.totalgenerations)).replace('OUTPUT_FILE', str(args.trees_file))

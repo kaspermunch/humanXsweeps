@@ -662,7 +662,7 @@ def compute_tree_stats(input_table_file, output_hdf_file, component_hdf_file, co
 
 
 
-def slim_sim(selcoef, gen_time, mut_per_year, samples, sweep_type, sweep_start, demography,
+def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, sweep_start, demography,
  chrom, xreduction, total_sim_generations, slim_tree_file, slim_dist_file):
 
     options = {'memory': '16g',
@@ -673,15 +673,18 @@ def slim_sim(selcoef, gen_time, mut_per_year, samples, sweep_type, sweep_start, 
 
     source activate simons
     python scripts/slim_trees.py --selcoef {selcoef} --samples {samples} \
-        --window 100000 --generationtime {gen_time} --mutationrate {mut_per_year} \
+        --window 100000 --generationtime {gen_time} \
+        --mutationrate {mut_per_year} --recrate {rec_rate} \
         --sweep {sweep_type} --sweepstart {sweep_start} \
         --demography {demography} \
         --chrom {chrom} --x-size-reduction {xreduction} \
         --totalgenerations {total_sim_generations} \
         {tree_output} {hdf_output}
             
-    """.format(selcoef=selcoef, gen_time=gen_time, mut_per_year=mut_per_year, samples=samples,
-            sweep_type=sweep_type, sweep_start=sweep_start, total_sim_generations=total_sim_generations,
+    """.format(selcoef=selcoef, gen_time=gen_time, 
+            mut_per_year=mut_per_year, rec_rate=rec_rate,
+            samples=samples, sweep_type=sweep_type, sweep_start=sweep_start, 
+            total_sim_generations=total_sim_generations,
             demography=' '.join("{}:{}".format(*pair) for pair in demography),
             chrom=chrom, xreduction=xreduction,
             tree_output=slim_tree_file, hdf_output=slim_dist_file)
