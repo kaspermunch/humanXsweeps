@@ -3,16 +3,82 @@
 import os, sys
 #from gwf import template
 
+
+#################################################################################
+# Utility functions
+#################################################################################
+
+def modpath(p, parent=None, base=None, suffix=None):
+    par, name = os.path.split(p)
+    name_no_suffix, suf = os.path.splitext(name)
+#    if suffix is not None:
+    if type(suffix) is str:
+        suf = suffix
+    if parent is not None:
+        par = parent
+    if base is not None:
+        name_no_suffix = base
+
+    # return os.path.join(par, name_no_suffix + suf)
+    new_path = os.path.join(par, name_no_suffix + suf)
+    if type(suffix) is tuple:
+        assert len(suffix) == 2
+        new_path, nsubs = re.subn(r'{}$'.format(suffix[0]), suffix[1], new_path)
+        assert nsubs == 1, nsubs
+    return new_path
+
+def get_basename(p):
+    return os.path.splitext(os.path.basename(p))[0]
+
+
+def bp2str(n):
+    """
+    Convert a number of bases to a human readable string
+    """
+    if n < 1000:
+        return '{}bp'.format(n)
+    elif n < 1000000:
+        if n % 1000:
+            return '{}kb'.format(n/1000)
+        else:
+            return '{}kb'.format(int(n/1000))
+    else:
+        if n % 1000000:
+            return '{}Mb'.format(n/1000000)
+        else:
+            return '{}Mb'.format(int(n/1000000))
+
 ##############################################################################
 # Templates
 ##############################################################################
 
+def vcf2haplo(vcf_file, sample_id, masked_ref, out_file1, out_file2=None):
 
-# rz2gz = template(inputs=['{rz_file}'], outputs=['{gz_file}']) << """
+    options = {'memory': '8g',
+               'walltime': '1:00:00'
+              }
 
-#     zcat {rz_file} | gzip > {gz_file}
+    outputs = [out_file1]
+    out_args = '--out1 ' + out_file1
+    if out_file2 is not None:
+        outputs += [out_file2]
+        out_args = ' --out2 ' + out_file2
 
-#     """
+    spec = """
+
+    source activate simons
+    source /com/extra/vcftools/0.1.14/load.sh
+    vcftools --gzvcf {vcf_file} --remove-indels --remove-filtered-all --max-alleles 2 \
+        --recode --recode-INFO-all --indv {sample_id} --stdout | \
+    phased_vcf_to_hapltype.py --sample {sample_id} --masked_ref {ref} {out_args}
+
+    """.format(vcf_file=vcf_file, sample_id=sample_id, ref=masked_ref, out_args=out_args)
+
+
+
+    return [vcf_file], outputs, options, spec
+
+
 def rz2gz(rz_file, gz_file):
 
     spec = """
@@ -665,7 +731,7 @@ def compute_tree_stats(input_table_file, output_hdf_file, component_hdf_file, co
 def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, sweep_start, demography,
  chrom, xreduction, total_sim_generations, slim_tree_file, slim_dist_file):
 
-    options = {'memory': '16g',
+    options = {'memory': '8g',
                'walltime': '05:00:00'
               } 
 

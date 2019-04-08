@@ -21,51 +21,6 @@ gwf = Workflow(defaults={'account': 'simons'})
 
 
 #################################################################################
-# Utility functions
-#################################################################################
-
-def modpath(p, parent=None, base=None, suffix=None):
-    par, name = os.path.split(p)
-    name_no_suffix, suf = os.path.splitext(name)
-#    if suffix is not None:
-    if type(suffix) is str:
-        suf = suffix
-    if parent is not None:
-        par = parent
-    if base is not None:
-        name_no_suffix = base
-
-    # return os.path.join(par, name_no_suffix + suf)
-    new_path = os.path.join(par, name_no_suffix + suf)
-    if type(suffix) is tuple:
-        assert len(suffix) == 2
-        new_path, nsubs = re.subn(r'{}$'.format(suffix[0]), suffix[1], new_path)
-        assert nsubs == 1, nsubs
-    return new_path
-
-def get_basename(p):
-    return os.path.splitext(os.path.basename(p))[0]
-
-
-def bp2str(n):
-    """
-    Convert a number of bases to a human readable string
-    """
-    if n < 1000:
-        return '{}bp'.format(n)
-    elif n < 1000000:
-        if n % 1000:
-            return '{}kb'.format(n/1000)
-        else:
-            return '{}kb'.format(int(n/1000))
-    else:
-        if n % 1000000:
-            return '{}Mb'.format(n/1000000)
-        else:
-            return '{}Mb'.format(int(n/1000000))
-
-
-#################################################################################
 # Load meta data
 #################################################################################
 
@@ -83,7 +38,7 @@ mydir = os.path.join(faststorage, 'people', 'kmt')
 
 
 #################################################################################
-# input files
+# simons input files
 #################################################################################
 
 # reference sequence file
