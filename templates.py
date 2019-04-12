@@ -1,8 +1,9 @@
 
 
-import os, sys
+import os, sys, re
 #from gwf import template
 
+from pathlib import Path
 
 #################################################################################
 # Utility functions
@@ -52,7 +53,64 @@ def bp2str(n):
 # Templates
 ##############################################################################
 
-def vcf2haplo(vcf_file, sample_id, masked_ref, out_file1, out_file2=None):
+def bed_difference(bed_file1, bed_file2, output_file): 
+
+    options = {'memory': '4g',
+               'walltime': '11:00:00'
+               }
+    shell_spec = """
+
+    source activate simons
+    python ./scripts/liftover_diff.py {bed_file1} {bed_file2} | sort -k1,1 -k2,2n -k3,3n > {output_file}
+
+    """.format(bed_file1=bed_file1, bed_file2=bed_file2, output_file=output_file)
+
+    return [bed_file1, bed_file2], [output_file], options, shell_spec
+
+
+def bed_merge_and_split(input_files, output_files):
+
+    output_base_names = [Path(x).name for x in output_files]
+
+    # get output dir and make sure it is unambiguous:
+    output_dirs = [Path(x).parent for x in output_files]
+    assert len(set(output_dirs)) == 1
+    output_dir = output_dirs[0]
+
+    input_files = [str(x) for x in input_files]
+    output_files = [str(x) for x in output_files]
+
+    options = {'memory': '10g',
+               'walltime': '11:00:00'}
+
+    shell_spec = """
+
+    sort -k1,1 -k2,2n -k3,3n --merge {input_files} -T /scratch/$GWF_JOBID | python ./scripts/bed_split.py {output_dir} {output_base_names}
+
+    """.format(input_files=" ".join(input_files),
+               output_dir=output_dir,
+               output_base_names=" ".join(output_base_names))
+
+    return input_files, output_files, options, shell_spec
+
+
+def liftover(bed_file, chain_file, mapped_file, unmapped_file):
+
+    options = {'memory': '4g',
+               'walltime': '36:00:00'
+               }
+
+    spec = """
+
+    source activate simons
+    liftOver -bedPlus=3 {bed_file} {chain_file} {mapped_file} {unmapped_file}
+
+    """.format(bed_file=bed_file, chain_file=chain_file, mapped_file=mapped_file, unmapped_file=unmapped_file)
+
+    return [bed_file, chain_file], [mapped_file, unmapped_file], options, spec
+
+
+def vcf2haplo(vcf_file, sample_id, masked_ref, out_file1, haploid=False, out_file2=None):
 
     options = {'memory': '8g',
                'walltime': '1:00:00'
@@ -64,19 +122,20 @@ def vcf2haplo(vcf_file, sample_id, masked_ref, out_file1, out_file2=None):
         outputs += [out_file2]
         out_args = ' --out2 ' + out_file2
 
+    haploid_arg = haploid and '--haploid' or ''
+
     spec = """
 
     source activate simons
     source /com/extra/vcftools/0.1.14/load.sh
     vcftools --gzvcf {vcf_file} --remove-indels --remove-filtered-all --max-alleles 2 \
         --recode --recode-INFO-all --indv {sample_id} --stdout | \
-    phased_vcf_to_hapltype.py --sample {sample_id} --masked_ref {ref} {out_args}
+    python scripts/phased_vcf_to_hapltype.py --sample {sample_id} --masked_ref {ref} {haploid_arg} {out_args}
 
-    """.format(vcf_file=vcf_file, sample_id=sample_id, ref=masked_ref, out_args=out_args)
+    """.format(vcf_file=vcf_file, sample_id=sample_id, ref=masked_ref, 
+                haploid_arg=haploid_arg, out_args=out_args)
 
-
-
-    return [vcf_file], outputs, options, spec
+    return [vcf_file, masked_ref], outputs, options, spec
 
 
 def rz2gz(rz_file, gz_file):

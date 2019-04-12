@@ -101,8 +101,11 @@ autosomes = list(map(str, range(1, 23)))
 #################################################################################
 
 g1000_callability_mask_dir = os.path.join(faststorage, 'data/1000Genomes/callabilitymask')
-g1000_callability_mask_files = [os.path.join(g1000_callability_mask_dir,
-                '20141020.chr{}.strict_mask.fasta.gz'.format(chrom)) for chrom in autosomes + ['X']]
+g1000_callability_mask_files = dict([(chrom, os.path.join(g1000_callability_mask_dir,
+                '20140520.chr{}.strict_mask.fasta.gz'.format(chrom))) for chrom in autosomes + ['X']])
+g1000_callability_mask_files['X'] = os.path.join(g1000_callability_mask_dir, '20141020.chrX.strict_mask.fasta.gz')
+assert len(g1000_callability_mask_files) == 23
+                
 human_reference = os.path.join(faststorage, 'data/cteam_lite_public3/FullyPublic/Href.fa')
 
 # dir for male haplotypes
@@ -110,13 +113,14 @@ g1000_masked_ref_dir = os.path.join(mydir, 'steps', '1000genomes', 'masked_ref')
 if not os.path.exists(g1000_masked_ref_dir):
     os.makedirs(g1000_masked_ref_dir)
 
-for i, mask_file in enumerate(g1000_callability_mask_files):
+g1000_masked_ref_files = dict()
+for chrom, mask_file in g1000_callability_mask_files.items():
 
     masked_ref = modpath(mask_file, parent=g1000_masked_ref_dir, suffix='.fa')
-
+    g1000_masked_ref_files[chrom] = masked_ref
     #g1000_masked_reference = os.path.join(faststorage, 'steps', '1000genomes', 'masked_ref', 'masked_reference.fa')
 
-    g = gwf.target("mask_reference_g1000_{}".format(i), inputs=[human_reference, mask_file], 
+    g = gwf.target("mask_reference_g1000_{}".format(chrom), inputs=[human_reference, mask_file], 
         outputs=[masked_ref], 
         memory='16g', walltime='01:00:00') << """
 
@@ -149,9 +153,11 @@ for chrom in ['X']:
         haplo_file1 = modpath("{}_{}-A.fa".format(sample_id, chrom), parent=chrom_dir)
         g1000_male_x_haplotype_files.append(haplo_file1)
 
+        # get single haplotypes from only the haploid part of the male X
         gwf.target_from_template("vcf2haplo_male_{}_{}".format(chrom, sample_id),
-            vcf2haplo(vcf_file=g1000_vcf_files[chrom], masked_ref=g1000_masked_reference,
+            vcf2haplo(vcf_file=g1000_vcf_files[chrom], masked_ref=g1000_masked_ref_files[chrom],
             sample_id=sample_id, 
+            haploid=True,
             out_file1=haplo_file1))
 
 
@@ -181,11 +187,9 @@ for chrom in autosomes + ['X']:
         haplo_file2 = modpath("{}_{}-B.fa".format(sample_id, chrom), parent=chrom_dir)
         g1000_female_haplotype_files.append(haplo_file2)
 
-        # assert haplo_file1 != '/' and haplo_file2 != '/'
-        # print(haplo_file1, haplo_file2)
-
+        # get two haplotypes from the entire female X
         gwf.target_from_template("vcf2haplo_female_{}_{}".format(chrom, sample_id),
-            vcf2haplo(vcf_file=g1000_vcf_files[chrom], masked_ref=g1000_masked_reference,
+            vcf2haplo(vcf_file=g1000_vcf_files[chrom], masked_ref=g1000_masked_ref_files[chrom],
             sample_id=sample_id, 
             out_file1=haplo_file1, out_file2=haplo_file2))
 

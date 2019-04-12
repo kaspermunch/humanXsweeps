@@ -1050,7 +1050,71 @@ for region_label in ['World']:
 #                 component_hdf_file, component_stats_hdf_file,
 #                 sweep_sister_clade_hdf_file, nonsweep_sister_clade_hdf_file))
 
+#################################################################################
+# liftovers
+#################################################################################
 
+
+def reciprocal_liftover(intervals_files, forwards_chain_file, backwards_chain_file, 
+                        slurm_tag, steps_dir, target_chromosomes):
+    """
+    Does reciprocal lift over of a set of intervals.
+    """
+
+    if not steps_dir.exists():
+        os.makedirs(str(steps_dir))
+
+    # output files
+    mapped_files= [steps_dir / x.with_suffix('.mapped').name for x in intervals_files]
+    unmapped_files = [x.with_suffix('.unmapped') for x in mapped_files]
+    backmapped_files = [x.with_suffix('.backmapped') for x in mapped_files]
+    unbackmapped_files = [x.with_suffix('.nobackmapped') for x in mapped_files]
+    filtered_files = [x.with_suffix('.filtered') for x in mapped_files]
+
+    lifted_files = [steps_dir / 'sorted' / "{}.bed".format(x) for x in target_chromosomes]
+
+    for i in range(len(intervals_files)):
+
+        # lift over intervals
+        gwf.target_from_template('{}_lift_{}'.format(slurm_tag, i),
+            liftover(bed_file=intervals_files[i], chain_file=forwards_chain_file,
+            mapped_file=mapped_files[i], unmapped_file=unmapped_files[i]))
+
+        # lift back to orginal coordinates to ensure one to one correspondence
+        gwf.target_from_template('{}_liftback_{}'.format(slurm_tag, i),
+            liftover(bed_file=mapped_files[i], chain_file=backwards_chain_file,
+            mapped_file=backmapped_files[i], unmapped_file=unbackmapped_files[i]))
+
+        # filter out intervals that does not map both ways
+        gwf.target_from_template('{}_filter_{}'.format(slurm_tag, i),
+            bed_difference(bed_file1=mapped_files[i], bed_file2=unbackmapped_files[i],
+            output_file=filtered_files[i]))
+
+    # filter out intervals that does not map both ways
+    gwf.target_from_template('{}_merge_and_split'.format(slurm_tag),
+        bed_merge_and_split(input_files=filtered_files, output_files=lifted_files))
+
+    return lifted_files
+
+# split map file per chromosome......
+
+
+
+chains_dir = Path('data/chain_files')
+
+# decode hg38 map files
+hg38_map_files = []
+
+# chromosomes we are interested in (not other random contigs)
+target_chromosomes = ['chr{}'.format(x) for x in list(range(1,23)) + ['X']]
+
+# lift decode map from hg38 to hg19
+hg19_map_files = reciprocal_liftover(hg38_map_files,
+    forwards_chain_file=chains_dir/'hg38ToHg19.over.chain', 
+    backwards_chain_file=chains_dir/'hg19ToHg38.over.chain',
+    slurm_tag='liftover',
+    steps_dir=Path(os.getcwd(), 'steps', 'decode_liftover'),
+    target_chromosomes=target_chromosomes)
 
 
 #################################################################################
