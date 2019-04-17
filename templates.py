@@ -113,14 +113,14 @@ def liftover(bed_file, chain_file, mapped_file, unmapped_file):
 def vcf2haplo(vcf_file, sample_id, masked_ref, out_file1, haploid=False, out_file2=None):
 
     options = {'memory': '8g',
-               'walltime': '1:00:00'
+               'walltime': '3:00:00'
               }
 
     outputs = [out_file1]
     out_args = '--out1 ' + out_file1
     if out_file2 is not None:
         outputs += [out_file2]
-        out_args = ' --out2 ' + out_file2
+        out_args += ' --out2 ' + out_file2
 
     haploid_arg = haploid and '--haploid' or ''
 
