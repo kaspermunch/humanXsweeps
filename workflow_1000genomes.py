@@ -45,14 +45,19 @@ for f in g1000_vcf_files.values():
     assert os.path.exists(f), f
 
 #################################################################################
+# Meta information
+#################################################################################
 
-# Extracted sample names from VCF (sample_names.txt)
-#     zcat data/1000Genomes/ALL.chrX.phase3_shapeit2_mvncall_integrated_v1b.20130502.genotypes.vcf.gz | head -n 10000 | grep CHROM | perl -pe 's/\s+/\n/g' > sample_names.txt
+"""
+Extracted sample names from VCF (sample_names.txt)
 
-# Converted metainfo excel file to csv (sample_info.csv)
+zcat data/1000Genomes/ALL.chrX.phase3_shapeit2_mvncall_integrated_v1b.20130502.genotypes.vcf.gz | head -n 10000 | grep CHROM | perl -pe 's/\s+/\n/g' > sample_names.txt
 
-# write files with sample names devided by population and sex (also writes pop_names.tsv):
-# python scripts/write_1000gen_meta_info.py ../../data/1000Genomes/metainfo/sample_names.txt  ../../data/1000Genomes/metainfo/sample_info.csv  ../../data/1000Genomes/metainfo
+Converted metainfo excel file to csv (sample_info.csv)
+
+write files with sample names devided by population and sex (also writes pop_names.tsv):
+python scripts/write_1000gen_meta_info.py ../../data/1000Genomes/metainfo/sample_names.txt  ../../data/1000Genomes/metainfo/sample_info.csv  ../../data/1000Genomes/metainfo
+"""
 
 # populations (read from pop_names.tsv)
 g1000_populations = [
@@ -83,6 +88,26 @@ g1000_populations = [
     'GIH', #	Gujarati Indian in Houston,TX
     'GWD', #	Gambian in Western Division, The Gambia
 ]
+
+# read male sample names:
+g1000_males_file = os.path.join(faststorage, 'data', '1000Genomes', 'metainfo', 'all_males.txt')
+with open(g1000_males_file) as f:
+    g1000_males = f.read().strip().split()
+
+# read male sample names:
+g1000_females_file = os.path.join(faststorage, 'data', '1000Genomes', 'metainfo', 'all_females.txt')
+with open(g1000_females_file) as f:
+    g1000_females = f.read().strip().split()
+
+# mappings between male and pop
+g1000_males_by_pop = defaultdict(list)
+for pop in g1000_populations:
+    with open(os.path.join(faststorage, 'data', '1000Genomes', 'metainfo', '{}_male.txt'.format(pop))) as f:
+        g1000_males_by_pop[pop] = f.read().split()
+g1000_pops_by_male = dict()
+for pop, indivs in g1000_males_by_pop.items():
+    for i in indivs:
+        g1000_pops_by_male[i] = pop
 
 
 #################################################################################
@@ -133,12 +158,6 @@ for chrom, mask_file in g1000_callability_mask_files.items():
 # Write phased haplotypes for all male X 
 #################################################################################
 
-# read male sample names:
-g1000_males_file = os.path.join(faststorage, 'data', '1000Genomes', 'metainfo', 'all_males.txt')
-with open(g1000_males_file) as f:
-    g1000_males = f.read().strip().split()
-
-
 # dir for male haplotypes
 g1000_male_haplo_dir = os.path.join(mydir, 'steps', '1000genomes', 'haplotypes', 'males')
 if not os.path.exists(g1000_male_haplo_dir):
@@ -165,12 +184,6 @@ for chrom in ['X']:
 # Write phased haplotypes for all female X and auto
 #################################################################################
 
-# read male sample names:
-g1000_females_file = os.path.join(faststorage, 'data', '1000Genomes', 'metainfo', 'all_females.txt')
-with open(g1000_females_file) as f:
-    g1000_females = f.read().strip().split()
-
-
 # dir for male haplotypes
 g1000_female_haplo_dir = os.path.join(mydir, 'steps', '1000genomes', 'haplotypes', 'females')
 if not os.path.exists(g1000_female_haplo_dir):
@@ -194,22 +207,151 @@ for chrom in autosomes + ['X']:
             out_file1=haplo_file1, out_file2=haplo_file2))
 
 
+# #################################################################################
+# # mask admxiture segments in male x chromosomes
+# #################################################################################
+
+g1000_admix_masked_male_x_haplotype_files = g1000_male_x_haplotype_files
+g1000_admix_masked_male_x_haploids_dir = g1000_male_haplo_dir
+
+# # dir for files
+# admix_masked_male_x_haploids_dir = os.path.join(mydir, 'steps', 'male_x_haploids_admix_masked')
+# if not os.path.exists(admix_masked_male_x_haploids_dir):
+#     os.makedirs(admix_masked_male_x_haploids_dir)
+
+# admix_masked_male_x_haploids = [modpath(x, parent=admix_masked_male_x_haploids_dir, suffix='.fa') for x in male_x_haploids]
+
+# min_admix_post_prob = 0.8
+
+# laurits_admix_pred_file = os.path.join(mydir, 'data/laurits_data/RestofworldHMMHaploid_samePAR.txt')
+
+# for i, (unmasked, masked) in enumerate(zip(male_x_haploids, admix_masked_male_x_haploids)):
+#     gwf.target_from_template("admixmask1_x_{}".format(i), 
+#         admix_mask(unmasked_file=str(unmasked), masked_file=str(masked), 
+#         admix_pred_file=laurits_admix_pred_file, min_post_prob=min_admix_post_prob))
 
 
+# #################################################################################
+# # pairwise differences for the admix-masked haplotypes (produces separate stats for admix masked)
+# #################################################################################
+
+dist_binsize = 100000
+
+# dict with male x admix masked haplotype files by population
+g1000_admix_masked_male_x_haplotype_pop_files = defaultdict(list)
+for file_name in g1000_admix_masked_male_x_haplotype_files:
+    indiv, chrom, hap = re.search(r'/([^/]+)_(\S+)-([AB]).fa', str(file_name)).groups() 
+    pop = g1000_pops_by_male[indiv]
+    g1000_admix_masked_male_x_haplotype_pop_files[pop].append(file_name)
+
+# dict with distance data files
+g1000_male_admix_masked_dist_file_names = defaultdict(list)
+
+# root dir for dist stores for each population
+g1000_male_admix_masked_dist_dir = os.path.join(mydir, 'steps', '1000genomes', 'male_x_haploid_dist_admix_masked')
+
+for pop, pop_files in g1000_admix_masked_male_x_haplotype_pop_files.items():
+
+    # dir for files
+    # pop_dist_dir = os.path.join(mydir, 'steps', '1000genomes', 'male_x_haploid_dist_admix_masked', pop)
+    pop_dist_dir = os.path.join(g1000_male_admix_masked_dist_dir, pop)
+    if not os.path.exists(pop_dist_dir):
+        os.makedirs(pop_dist_dir)
+
+    i = 0
+
+    # iter male haploid pairs
+    for file1, file2 in itertools.combinations(sorted(pop_files), 2):
+
+        indiv1, chrom1, hap1 = re.search(r'/([^/]+)_(\S+)-([AB]).fa', str(file1)).groups() 
+        indiv2, chrom2, hap2 = re.search(r'/([^/]+)_(\S+)-([AB]).fa', str(file2)).groups() 
+
+        # we do not compare chromosome from the same 
+        # individul to avoid inbreeding arterfcts
+        if indiv1 == indiv2:
+            continue
+
+        output_base_name = '{}_{}_{}_{}_{}.pickle' .format(indiv1, hap1, indiv2, hap2, bp2str(dist_binsize))
+        out_file_name = modpath(output_base_name, parent=pop_dist_dir)
+
+        g1000_male_admix_masked_dist_file_names[pop].append(out_file_name)
+
+        gwf.target_from_template('g1000_male_dist_admix_masked_windows1_{}_{}'.format(pop, i), 
+            admix_masked_dist_for_x_pair_template(str(file1), str(file2), 
+            dist_binsize, 'NA', indiv1, hap1, indiv2, hap2, str(out_file_name)))
+
+        i += 1
 
 
+# #################################################################################
+# # Call sweeps SEPARATELY FOR EACH POPULATION....
+# #################################################################################
+
+# dir for files
+g1000_male_dist_admix_masked_store_dir = os.path.join(mydir, 'steps', '1000genomes', 'male_dist_admix_masked_stores')
+if not os.path.exists(g1000_male_dist_admix_masked_store_dir):
+    os.makedirs(g1000_male_dist_admix_masked_store_dir)
+
+g1000_male_dist_admix_masked_store_files = dict()
+
+for pop, pop_files in g1000_male_admix_masked_dist_file_names.items():
+
+    pop_dist_dir = os.path.join(g1000_male_admix_masked_dist_dir, pop)
+
+    pop_store_dir = os.path.join(g1000_male_dist_admix_masked_store_dir, pop)
+    if not os.path.exists(pop_store_dir):
+        os.makedirs(pop_store_dir)
+
+    pop_store_base_name = "male_dist_data_chrX_{}_{}".format(bp2str(dist_binsize), pop)
+    pop_store_file = modpath(pop_store_base_name, parent=pop_store_dir, suffix='.hdf')
+
+    g1000_male_dist_admix_masked_store_files[pop] = pop_store_file
+
+    g = gwf.target("g1000_build_dist_datasets_{}".format(pop), inputs=pop_files, outputs=[pop_store_file], 
+        memory='8g', walltime='1:00:00') << """
+
+        source activate simons
+        python scripts/g1000_build_male_dist_admix_masked_datasets.py \
+            --dist-dir {dist_dir} \
+            --out-file {out_file}
+
+    """.format(dist_dir=pop_dist_dir, out_file=pop_store_file)
 
 
 #################################################################################
-# 
+# Call sweeps on the distance data with given pwdist_cutoff and min_sweep_clade_size
 #################################################################################
 
+min_sweep_clade_size = 20
+
+g1000_male_dist_admix_masked_sweep_data_files = dict()
+
+for pop, pop_store_file in g1000_male_dist_admix_masked_store_files.items():
+
+    pop_sweep_data_file = modpath("sweep_data_{}_{}.hdf".format(analysis_globals.pwdist_cutoff, min_sweep_clade_size),
+                                    parent=os.path.dirname(pop_store_file))
+
+    pop_store_base_name = modpath(pop_store_file, parent='', suffix='')
+    pop_dist_twice_file = modpath(pop_store_base_name + '_twice', parent=os.path.dirname(pop_store_file), suffix='.hdf')
+
+    g1000_male_dist_admix_masked_sweep_data_files[pop] = pop_sweep_data_file
+
+    gwf.target_from_template('g1000_male_sweep_data_{}'.format(pop), 
+        g1000_sweep_data(pop_store_file, pop_sweep_data_file, dump_dist_twice=pop_dist_twice_file))
+
+
+# #################################################################################
+# # Heterozygosity for all females for all chromosomes
+# #################################################################################
 
 
 
 
 
 
-#################################################################################
-# 
-#################################################################################
+
+# #################################################################################
+# # Fst in 100kb windows for all females for all chromosomes
+# #################################################################################
+
+# # vcftools --gzvcf ../../data/1000Genomes/ALL.chrX.phase3_shapeit2_mvncall_integrated_v1b.20130502.genotypes.vcf.gz --remove-indels --remove-filtered-all --max-alleles 2 --fst-window-size 100000 --weir-fst-pop FIN_female.txt --weir-fst-pop YRI_female.txt  --weir-fst-pop JPT_female.txt --out tmp

@@ -818,21 +818,51 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
 
 
 
-def sweep_data(dist_file, sweep_data_file, memory='100g', walltime='03:00:00'):
+def sweep_data(dist_file, sweep_data_file, dump_dist_twice=None, cores=1, memory='100g', walltime='48:00:00'):
+    """
+    Make and dump data frame with all distances in both directions (indiv_1, indiv2 and indiv_2, indiv_1). 
+    Then calls sweeps.
+    """
 
     options = {'memory': memory,
-               'walltime': walltime
+               'walltime': walltime,
+               'cores': cores,
               } 
 
+    out_files = [sweep_data_file]
+    extra_arg = ''
+    if dump_dist_twice:
+        extra_arg = '--dump-dist-twice {}'.format(dump_dist_twice)
+        out_files += [dump_dist_twice]
+    
+    spec = """
+
+    source activate simons
+    python scripts/sweep_calling.py {extra_arg} {dist_file} {sweep_data_file}
+
+    """.format(extra_arg=extra_arg, dist_file=dist_file, sweep_data_file=sweep_data_file)
+
+    return [dist_file], out_files, options, spec
+
+
+def g1000_sweep_data(dist_file, sweep_data_file, dump_dist_twice):
+    """
+    Same as above but without adding meta data/
+    """
+
+    options = {'memory': '10g',
+               'walltime': '5:00:00',
+               'cores': 1,
+              } 
 
     spec = """
 
     source activate simons
-    python scripts/sweep_calling.py {dist_file} {sweep_data_file}
+    python scripts/g1000_sweep_calling.py --dump-dist-twice {dump_dist_twice} {dist_file} {sweep_data_file}
 
-    """.format(dist_file=dist_file, sweep_data_file=sweep_data_file)
+    """.format(dump_dist_twice=dump_dist_twice, dist_file=dist_file, sweep_data_file=sweep_data_file)
 
-    return [dist_file], [sweep_data_file], options, spec
+    return [dist_file], [sweep_data_file, dump_dist_twice], options, spec
 
 
 

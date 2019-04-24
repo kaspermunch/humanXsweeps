@@ -5,7 +5,6 @@ from pandas import DataFrame, Series
 import argparse
 from multiprocessing import Pool, cpu_count
 
-import simons_meta_data
 import hg19_chrom_sizes
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -14,15 +13,7 @@ import analysis_globals
 
 def dist_twice(dist_data):
 
-    individuals, populations, regions = simons_meta_data.get_meta_data(meta_data_dir=analysis_globals.meta_data_dir)
-
-    if 'dist_af' in dist_data.columns:
-        # this is not a simulation
-
-        dist_data.drop('pop_label', axis=1, inplace=True)
-
-        dist_data['pop_1'] = [individuals[x]['Population ID'] for x in dist_data.indiv_1]
-        dist_data['pop_2'] = [individuals[x]['Population ID'] for x in dist_data.indiv_2]
+    dist_data.drop('pop_label', axis=1, inplace=True)
 
     # dict for swapping columns
     swap_dict = dict()
@@ -32,16 +23,10 @@ def dist_twice(dist_data):
         if colname.endswith('_2'):
             swap_dict[colname] = colname[:-2] + '_1'
 
-    if 'dist_af' in dist_data.columns:
-        # this is not a simulation
-        cols = ['start', 'end', 'indiv_1', 'indiv_2', 
-                'dist', 'mismatch', 'match', 
-                'dist_af', 'mismatch_af', 'match_af',
-                'uncalled', 'pop_1', 'pop_2',
-                'region_label_1', 'region_label_2', 
-                'region_id_1', 'region_id_2', 'region_1', 'region_2']
-    else:
-        cols =['start', 'end', 'indiv_1', 'indiv_2', 'dist']
+    cols = ['start', 'end', 'indiv_1', 'indiv_2', 
+            'dist', 'mismatch', 'match', 
+            'dist_af', 'mismatch_af', 'match_af',
+            'uncalled']
 
     dist_data_twice = (pandas.concat([dist_data[cols],
                                       dist_data[cols].rename(columns=swap_dict)])
@@ -52,9 +37,8 @@ def dist_twice(dist_data):
     # mask uncalled windows:
     dist_data_twice.dist.where(dist_data_twice.uncalled <= analysis_globals.max_uncalled_bases, 
                                inplace=True)
-    if 'dist_af' in dist_data.columns:
-        dist_data_twice.dist_af.where(dist_data_twice.uncalled <= analysis_globals.max_uncalled_bases, 
-                                   inplace=True)
+    dist_data_twice.dist_af.where(dist_data_twice.uncalled <= analysis_globals.max_uncalled_bases, 
+                                inplace=True)
 
     return dist_data_twice
 
@@ -93,23 +77,20 @@ def call_rolling_windows(df):#, pwdist_cutoff, min_sweep_clade_size):
         # call if clade size is larger then cutoff
         called = clade_size >= analysis_globals.min_sweep_clade_size
     
-    if 'dist_af' in df.columns:
-        # this is not a simulation
-        if numpy.isnan(df.groupby('start')['dist_af'].mean()).any():     
-            called_af, clade_size_af, mean_clade_dist_af = numpy.nan, numpy.nan, numpy.nan
-        else:
-            pwdiffs_af = df.groupby(['indiv_2']).apply(mean_indiv_dist, 'dist_af')
 
-            mean_clade_dist_af = pwdiffs.loc[pwdiffs_af <= analysis_globals.pwdist_cutoff].mean() 
-
-            clade_size_af = (pwdiffs_af <= analysis_globals.pwdist_cutoff).sum()
-
-            called_af = clade_size_af >= analysis_globals.min_sweep_clade_size
-
-        return df.copy().assign(called=called, clade_size=clade_size, mean_clade_dist=mean_clade_dist,
-                                called_af=called_af, clade_size_af=clade_size_af, mean_clade_dist_af=mean_clade_dist_af)
+    if numpy.isnan(df.groupby('start')['dist_af'].mean()).any():     
+        called_af, clade_size_af, mean_clade_dist_af = numpy.nan, numpy.nan, numpy.nan
     else:
-        return df.copy().assign(called=called, clade_size=clade_size, mean_clade_dist=mean_clade_dist)
+        pwdiffs_af = df.groupby(['indiv_2']).apply(mean_indiv_dist, 'dist_af')
+
+        mean_clade_dist_af = pwdiffs.loc[pwdiffs_af <= analysis_globals.pwdist_cutoff].mean() 
+
+        clade_size_af = (pwdiffs_af <= analysis_globals.pwdist_cutoff).sum()
+
+        called_af = clade_size_af >= analysis_globals.min_sweep_clade_size
+
+    return df.copy().assign(called=called, clade_size=clade_size, mean_clade_dist=mean_clade_dist,
+                            called_af=called_af, clade_size_af=clade_size_af, mean_clade_dist_af=mean_clade_dist_af)
 
 
 def call_swept(df):
@@ -122,42 +103,29 @@ def call_swept(df):
     largest_clade_offsets = (df.groupby('off')
                              .filter(lambda df: (df.clade_size == max_clade_size).all() and df.called.all())
                             )
-    if 'dist_af' in df.columns:
-        max_clade_size_af = df.clade_size_af.max()
-        largest_clade_offsets_af = (df.groupby('off')
-                                .filter(lambda df: (df.clade_size_af == max_clade_size_af).all() and df.called_af.all())
-                                )
-        return DataFrame(dict(called=[df.called.any()], 
-                            clade_size=[max_clade_size],
-                            clade_mean_dist=[largest_clade_offsets['dist'].mean()],
-                            called_af=[df.called_af.any()], 
-                            clade_size_af=[max_clade_size_af],
-                            clade_mean_dist_af=[largest_clade_offsets_af['dist_af'].mean()]))
-    else:
-        return DataFrame(dict(called=[df.called.any()], 
-                            clade_size=[max_clade_size],
-                            clade_mean_dist=[largest_clade_offsets['dist'].mean()]))
+    max_clade_size_af = df.clade_size_af.max()
+    largest_clade_offsets_af = (df.groupby('off')
+                            .filter(lambda df: (df.clade_size_af == max_clade_size_af).all() and df.called_af.all())
+                            )
+    return DataFrame(dict(called=[df.called.any()], 
+                        clade_size=[max_clade_size],
+                        clade_mean_dist=[largest_clade_offsets['dist'].mean()],
+                        called_af=[df.called_af.any()], 
+                        clade_size_af=[max_clade_size_af],
+                        clade_mean_dist_af=[largest_clade_offsets_af['dist_af'].mean()]))
+
 
 def window_stats(df):
-    if 'dist_af' in df.columns:
-        return pandas.DataFrame({
-                                'mean_dist': [df.dist.mean()],
-                                'mean_dist_to_africans': [df.loc[df.region_2 == 'Africa', 'dist'].mean()],
-                                'mean_dist_af': [df.dist_af.mean()],
-                                'mean_dist_to_africans_af': [df.loc[df.region_2 == 'Africa', 'dist_af'].mean()],
-                                'win_swept': (df.dist <= analysis_globals.pwdist_cutoff).sum() >= \
-                                                analysis_globals.min_sweep_clade_size,
-                                'win_swept_af': (df.dist_af <= analysis_globals.pwdist_cutoff).sum() >= 
-                                                analysis_globals.min_sweep_clade_size,
-                                'prop_indivs_missing': [numpy.isnan(df.dist).sum() / df.dist.size]
-                                })
-    else:
-        return pandas.DataFrame({
-                        'mean_dist': [df.dist.mean()],
-                        'win_swept': (df.dist <= analysis_globals.pwdist_cutoff).sum() >= \
-                                        analysis_globals.min_sweep_clade_size,
-                        'prop_indivs_missing': [numpy.isnan(df.dist).sum() / df.dist.size]
-                        })
+
+    return pandas.DataFrame({
+                            'mean_dist': [df.dist.mean()],
+                            'mean_dist_af': [df.dist_af.mean()],
+                            'win_swept': (df.dist <= analysis_globals.pwdist_cutoff).sum() >= \
+                                            analysis_globals.min_sweep_clade_size,
+                            'win_swept_af': (df.dist_af <= analysis_globals.pwdist_cutoff).sum() >= 
+                                            analysis_globals.min_sweep_clade_size,
+                            'prop_indivs_missing': [numpy.isnan(df.dist).sum() / df.dist.size]
+                            })
 
 
 parser = argparse.ArgumentParser()
@@ -180,10 +148,6 @@ offsets = [x * offset for x in range(nr_wins)]
 window_size = len(offsets) * offset
 
 male_dist_data = pandas.read_hdf(args.dist_file_name)
-
-
-### CHECK IF I NEED TO FILTER INDIVIDUALS...
-
 
 all_male_dist_twice = dist_twice(male_dist_data)
 
@@ -209,11 +173,7 @@ sweep_calls = (pandas.concat(lst)
                 )
 
 # merge window sweep info with distance data
-if 'dist_af' in all_male_dist_twice.columns:
-    # this is not a simulation
-    gr_cols = ['indiv_1', 'start', 'end', 'pop_1', 'region_label_1', 'region_id_1', 'region_1']
-else:
-    gr_cols = ['indiv_1', 'start', 'end']
+gr_cols = ['indiv_1', 'start', 'end']
 df = (all_male_dist_twice
         .groupby(gr_cols)
         .apply(window_stats)
@@ -237,26 +197,23 @@ sweep_data['run_length'] = (sweep_data
 sweep_data['swept'] = numpy.bitwise_and(sweep_data['called'], 
                                         sweep_data['run_length'] >= analysis_globals.min_run_length)
 
-if 'called_af' in sweep_data.columns:
-    # this is not a simulation
-    sweep_data['run_id_af'] = (sweep_data
-                            .groupby('indiv_1')['called_af']
-                            .apply(run_id)
+
+sweep_data['run_id_af'] = (sweep_data
+                        .groupby('indiv_1')['called_af']
+                        .apply(run_id)
+                    )
+sweep_data['run_length_af'] = (sweep_data
+                            .groupby(['indiv_1', 'run_id_af'])['run_id_af']
+                            .transform(numpy.size)
                         )
-    sweep_data['run_length_af'] = (sweep_data
-                                .groupby(['indiv_1', 'run_id_af'])['run_id_af']
-                                .transform(numpy.size)
-                            )
-    sweep_data['swept_af'] = numpy.bitwise_and(sweep_data['called_af'], 
-                                            sweep_data['run_length_af'] >= analysis_globals.min_run_length)
+sweep_data['swept_af'] = numpy.bitwise_and(sweep_data['called_af'], 
+                                        sweep_data['run_length_af'] >= analysis_globals.min_run_length)
 
 
 if args.dump_dist_twice:
     all_male_dist_twice.to_hdf(args.dump_dist_twice, 'df', 
                                data_columns=['start', 'end', 
-                                         'indiv_1', 'indiv_2', 
-                                         'pop_1', 'pop_2', 
-                                         'region_label_1', 'region_label_2'],
+                                         'indiv_1', 'indiv_2'],
                                format='table', mode='w')
 
     

@@ -812,9 +812,15 @@ g = gwf.target("build_male_dist_admix_masked_datasets1", inputs=male_admix_maske
 # Call sweeps on the distance data with given pwdist_cutoff and min_sweep_clade_size
 #################################################################################
 
-male_dist_admix_masked_sweep_data_file = os.path.join(male_dist_admix_masked_store_dir, "sweep_data_{}_{}.hdf".format(analysis_globals.pwdist_cutoff, 
-                                                                                     analysis_globals.min_sweep_clade_size))
-gwf.target_from_template('male_dist_admix_masked_sweep_data', sweep_data(male_dist_admix_masked_store_file, male_dist_admix_masked_sweep_data_file))
+male_dist_admix_masked_sweep_data_file = \
+    os.path.join(male_dist_admix_masked_store_dir, "sweep_data_{}_{}.hdf".format(analysis_globals.pwdist_cutoff, 
+                                                                                 analysis_globals.min_sweep_clade_size))
+
+male_dist_admix_masked_dist_twice_file = modpath(male_dist_admix_masked_store_base_name + '_twice', parent=male_dist_admix_masked_store_dir, suffix='.hdf')
+
+gwf.target_from_template('male_dist_admix_masked_sweep_data', sweep_data(male_dist_admix_masked_store_file, 
+                                                                         male_dist_admix_masked_sweep_data_file, 
+                                                                         dump_dist_twice=male_dist_admix_masked_dist_twice_file))
 
 
 # #################################################################################
@@ -1221,7 +1227,7 @@ for i, slim_dist_file in enumerate(slim_dist_files):
     slim_sweep_data_file = modpath(slim_dist_file, parent=slim_sweep_data_dir)
     slim_sweep_data_files.append(slim_sweep_data_file)
     gwf.target_from_template('slim_sweep_data_{}'.format(i), sweep_data(slim_dist_file, slim_sweep_data_file, 
-                                                                        memory='8g', walltime='00:30:00'))
+                                                                        cores=1, memory='8g', walltime='00:30:00'))
 
 
 #################################################################################

@@ -14,11 +14,6 @@ group.add_argument("--haploid", action='store_true')
 group.add_argument("--out2", type=Path)
 args = parser.parse_args()
 
-out1 = open(str(args.out1), 'w')
-if args.out2:
-    out2 = open(str(args.out2), 'w')
-else:
-    out2 = None
 
 with open(str(args.masked_ref)) as f:
     a_haplo = list(next(SeqIO.parse(f, "fasta")).seq)
@@ -29,10 +24,12 @@ with open(str(args.masked_ref)) as f:
 
 haploid = args.haploid
 
+prev_chrom = None
 for line in sys.stdin:
     if line.startswith('#'):
        continue
     chrom, pos, snpid, ref, alt, qual, filt, info, form, genotype = line.split()
+    assert chrom == prev_chrom or prev_chrom is None
 
     if haploid:
         if genotype == '1':
@@ -45,12 +42,14 @@ for line in sys.stdin:
         a_call, b_call = genotype.split('|')
         if a_call == '1':
             a_haplo[int(pos)-1] = alt
-        if out2:
+        if args.out2:
             if b_call == '1':
                 b_haplo[int(pos)-1] = alt
 
-out1.write(">{}\n{}\n".format(args.sample, ''.join(a_haplo)))
-if out2:
-    out2.write(">{}\n{}\n".format(args.sample, ''.join(b_haplo)))
+out1 = open(str(args.out1), 'w')
+out1.write(">{}\n{}\n".format(chrom, ''.join(a_haplo)))
+if args.out2:
+    out2 = open(str(args.out2), 'w')
+    out2.write(">{}\n{}\n".format(chrom, ''.join(b_haplo)))
 
 
