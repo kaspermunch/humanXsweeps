@@ -1,6 +1,6 @@
 
 from pathlib import Path
-
+import pandas as pd
 
 ## This file contains paths and values that apply globally across notebooks ###
 
@@ -83,3 +83,73 @@ mut_per_year = 4.3e-10
 
 # generation time
 gen_time = 29
+
+
+#############################
+
+# # populations (read from pop_names.tsv)
+# g1000_populations = [
+#     'CHS', #	Southern Han Chinese, China
+#     'MXL', #	Mexican Ancestry in Los Angeles, California
+#     'ACB', #	African Caribbean in Barbados
+#     'CHB', #	Han Chinese in Bejing, China
+#     'IBS', #	Iberian populations in Spain
+#     'KHV', #	Kinh in Ho Chi Minh City, Vietnam
+#     'ASW', #	African Ancestry in Southwest US
+#     'ITU', #	Indian Telugu in the UK
+#     'MSL', #	Mende in Sierra Leone
+#     'TSI', #	Toscani in Italy
+#     'GBR', #	British in England and Scotland
+#     'BEB', #	Bengali in Bangladesh
+#     'STU', #	Sri Lankan Tamil in the UK
+#     'CEU', #	Utah residents with Northern and Western European ancestry
+#     'CDX', #	Chinese Dai in Xishuangbanna, China
+#     'JPT', #	Japanese in Tokyo, Japan
+#     'ESN', #	Esan in Nigeria
+#     'PJL', #	Punjabi in Lahore,Pakistan
+#     'CLM', #	Colombian in Medellin, Colombia
+#     'FIN', #	Finnish in Finland
+#     'LWK', #	Luhya in Webuye, Kenya
+#     'PEL', #	Peruvian in Lima, Peru
+#     'YRI', #	Yoruba in Ibadan, Nigeria
+#     'PUR', #	Puerto Rican in Puerto Rico
+#     'GIH', #	Gujarati Indian in Houston,TX
+#     'GWD', #	Gambian in Western Division, The Gambia
+# ]
+
+g1000_pop_info = pd.DataFrame.from_records([
+    ('CHB',	'Han Chinese in Beijing, China', 'EAS'),
+    ('JPT',	'Japanese in Tokyo, Japan', 'EAS'),
+    ('CHS',	'Southern Han Chinese', 'EAS'),
+    ('CDX',	'Chinese Dai in Xishuangbanna, China', 'EAS'),
+    ('KHV',	'Kinh in Ho Chi Minh City, Vietnam', 'EAS'),
+    ('CEU',	'Utah Residents (CEPH) with Northern and Western European Ancestry', 'EUR'),
+    ('TSI',	'Toscani in Italia', 'EUR'),
+    ('FIN',	'Finnish in Finland', 'EUR'),
+    ('GBR',	'British in England and Scotland', 'EUR'),
+    ('IBS',	'Iberian Population in Spain', 'EUR'),
+    ('YRI',	'Yoruba in Ibadan, Nigeria', 'AFR'),
+    ('LWK',	'Luhya in Webuye, Kenya', 'AFR'),
+    ('GWD',	'Gambian in Western Divisions in the Gambia', 'AFR'),
+    ('MSL',	'Mende in Sierra Leone', 'AFR'),
+    ('ESN',	'Esan in Nigeria', 'AFR'),
+    ('ASW',	'Americans of African Ancestry in SW USA', 'AFR'),
+    ('ACB',	'African Caribbeans in Barbados', 'AFR'),
+    ('MXL',	'Mexican Ancestry from Los Angeles USA', 'AMR'),
+    ('PUR',	'Puerto Ricans from Puerto Rico', 'AMR'),
+    ('CLM',	'Colombians from Medellin, Colombia', 'AMR'),
+    ('PEL',	'Peruvians from Lima, Peru', 'AMR'),
+    ('GIH',	'Gujarati Indian from Houston, Texas', 'SAS'),
+    ('PJL',	'Punjabi from Lahore, Pakistan', 'SAS'),
+    ('BEB',	'Bengali from Bangladesh', 'SAS'),
+    ('STU',	'Sri Lankan Tamil from the UK', 'SAS'),
+    ('ITU',	'Indian Telugu from the UK', 'SAS'),
+], columns=['population', 'description', 'superpop'])
+g1000_pop_info['superpop'] = pd.Categorical(g1000_pop_info.superpop, 
+                                            categories=['AFR', 'EUR', 'SAS', 'EAS', 'AMR'], 
+                                            ordered=True)
+g1000_pop_info.sort_values('superpop', inplace=True)
+g1000_pop_info.reset_index(inplace=True)
+
+g1000_min_sweep_clade_proportion = 0.3
+# could also use 0.3 which would correspond to 42 / 140 (min_clade_size of 42 in simons out of 140 nr non-Africans in simons)
