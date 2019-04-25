@@ -43,7 +43,7 @@ def dist_twice(dist_data):
     return dist_data_twice
 
 
-def call_rolling_windows(df):#, pwdist_cutoff, min_sweep_clade_size):
+def call_rolling_windows(df):
     """
     Takes a df with all pwdiffs in a 500kb rolling window between 
     one indiv and all other individuals. Returns all nan if one or more 100kb 
@@ -75,7 +75,7 @@ def call_rolling_windows(df):#, pwdist_cutoff, min_sweep_clade_size):
         clade_size = (pwdiffs <= analysis_globals.pwdist_cutoff).sum() 
         
         # call if clade size is larger then cutoff
-        called = clade_size >= analysis_globals.min_sweep_clade_size
+        called = clade_size >= MIN_SWEEP_CLADE_SIZE
     
 
     if numpy.isnan(df.groupby('start')['dist_af'].mean()).any():     
@@ -87,7 +87,7 @@ def call_rolling_windows(df):#, pwdist_cutoff, min_sweep_clade_size):
 
         clade_size_af = (pwdiffs_af <= analysis_globals.pwdist_cutoff).sum()
 
-        called_af = clade_size_af >= analysis_globals.min_sweep_clade_size
+        called_af = clade_size_af >= MIN_SWEEP_CLADE_SIZE
 
     return df.copy().assign(called=called, clade_size=clade_size, mean_clade_dist=mean_clade_dist,
                             called_af=called_af, clade_size_af=clade_size_af, mean_clade_dist_af=mean_clade_dist_af)
@@ -121,9 +121,9 @@ def window_stats(df):
                             'mean_dist': [df.dist.mean()],
                             'mean_dist_af': [df.dist_af.mean()],
                             'win_swept': (df.dist <= analysis_globals.pwdist_cutoff).sum() >= \
-                                            analysis_globals.min_sweep_clade_size,
+                                            MIN_SWEEP_CLADE_SIZE,
                             'win_swept_af': (df.dist_af <= analysis_globals.pwdist_cutoff).sum() >= 
-                                            analysis_globals.min_sweep_clade_size,
+                                            MIN_SWEEP_CLADE_SIZE,
                             'prop_indivs_missing': [numpy.isnan(df.dist).sum() / df.dist.size]
                             })
 
@@ -150,6 +150,10 @@ window_size = len(offsets) * offset
 male_dist_data = pandas.read_hdf(args.dist_file_name)
 
 all_male_dist_twice = dist_twice(male_dist_data)
+
+nr_indiv = all_male_dist_twice.indiv_1.unique().size
+
+MIN_SWEEP_CLADE_SIZE = round(analysis_globals.g1000_min_sweep_clade_proportion * nr_indiv)
 
 lst = list()
 # loop over five offsets of 500kb windows

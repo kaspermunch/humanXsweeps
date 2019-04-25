@@ -866,6 +866,27 @@ def g1000_sweep_data(dist_file, sweep_data_file, dump_dist_twice):
 
 
 
+def g1000_fst(vcf_file, pop_files, out_file):
+    """
+    Computes weir fst between populations
+    """
+
+    options = {'memory': '10g',
+               'walltime': '5:00:00',
+              } 
+
+    fst_args = " ".join("--weir-fst-pop " + pop_file for pop_file in pop_files)
+
+    spec = """
+    source activate simons
+    vcftools --gzvcf {vcf_file} --remove-indels --remove-filtered-all --max-alleles 2 \
+        --fst-window-size 100000 {fst_args} --out {out_file}
+    """.format(vcf_file=vcf_file, fst_args=fst_args, out_file=out_file)
+
+    return [vcf_file] + pop_files, [out_file], options, spec
+
+
+
 # def summary_hdf_store(summary_files, store_file):
 
 #     options = {'inputs': summary_files,
