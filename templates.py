@@ -300,6 +300,28 @@ def admix_masked_dist_for_x_pair_template(*args):
     return [f1, f2], [output_file_name], options, spec
 
 
+def admix_masked_dist_for_pair_template(*args):
+    """
+    same as above but not skipping all but X... assumes only one chromosome...
+    """
+
+    f1, f2, binsize, pop, indiv1, pseud1, indiv2, pseud2, output_file_name = args
+
+    options = {'memory': '4g',
+               'walltime': '11:00:00'
+               } 
+
+    spec = '''
+
+        source activate simons
+        python scripts/admix_masked_diff_windows.py {args}
+
+    '''.format(args=' '.join(map(str, args)))
+
+    return [f1, f2], [output_file_name], options, spec
+
+
+
 # def make_fasta_index(fasta_file, copied_fasta_file, index_file):
 
 #     options = {'memory': '4g',
@@ -845,7 +867,27 @@ def sweep_data(dist_file, sweep_data_file, dump_dist_twice=None, cores=1, memory
     return [dist_file], out_files, options, spec
 
 
-def g1000_sweep_data(dist_file, sweep_data_file, dump_dist_twice):
+
+# def g1000_sweep_data(dist_file, sweep_data_file, dump_dist_twice):
+#     """
+#     Same as above but without adding meta data/
+#     """
+
+#     options = {'memory': '10g',
+#                'walltime': '5:00:00',
+#                'cores': 1,
+#               } 
+
+#     spec = """
+
+#     source activate simons
+#     python scripts/g1000_sweep_calling.py --dump-dist-twice {dump_dist_twice} {dist_file} {sweep_data_file}
+
+#     """.format(dump_dist_twice=dump_dist_twice, dist_file=dist_file, sweep_data_file=sweep_data_file)
+
+#     return [dist_file], [sweep_data_file, dump_dist_twice], options, spec
+
+def g1000_sweep_data(dist_file, sweep_data_file, min_sweep_clade_percent, pwdist_cutoff):
     """
     Same as above but without adding meta data/
     """
@@ -858,11 +900,15 @@ def g1000_sweep_data(dist_file, sweep_data_file, dump_dist_twice):
     spec = """
 
     source activate simons
-    python scripts/g1000_sweep_calling.py --dump-dist-twice {dump_dist_twice} {dist_file} {sweep_data_file}
+    python scripts/g1000_sweep_calling.py \
+            --pwdist-cutoff {pwdist_cutoff} \
+            --min-sweep-clade-percent {min_sweep_clade_percent} \
+            {dist_file} {sweep_data_file}
 
-    """.format(dump_dist_twice=dump_dist_twice, dist_file=dist_file, sweep_data_file=sweep_data_file)
+    """.format(dist_file=dist_file, sweep_data_file=sweep_data_file, 
+               min_sweep_clade_percent=min_sweep_clade_percent, pwdist_cutoff=pwdist_cutoff)
 
-    return [dist_file], [sweep_data_file, dump_dist_twice], options, spec
+    return [dist_file], [sweep_data_file], options, spec
 
 
 
@@ -879,9 +925,10 @@ def g1000_fst(vcf_file, pop_files, out_file):
 
     spec = """
     source activate simons
+    source /com/extra/vcftools/0.1.14/load.sh
     vcftools --gzvcf {vcf_file} --remove-indels --remove-filtered-all --max-alleles 2 \
         --fst-window-size 100000 {fst_args} --out {out_file}
-    """.format(vcf_file=vcf_file, fst_args=fst_args, out_file=out_file)
+    """.format(vcf_file=vcf_file, fst_args=fst_args, out_file=out_file.replace('.windowed.weir.fst', ''))
 
     return [vcf_file] + pop_files, [out_file], options, spec
 
