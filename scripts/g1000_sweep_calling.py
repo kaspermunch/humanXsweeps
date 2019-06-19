@@ -11,39 +11,43 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, script_dir + '/../notebooks')
 import analysis_globals
 
-def dist_twice(dist_data):
+# def dist_twice(dist_data):
 
-    dist_data.drop('pop_label', axis=1, inplace=True)
+#     dist_data.drop('pop_label', axis=1, inplace=True)
 
-    # dict for swapping columns
-    swap_dict = dict()
-    for colname in dist_data.columns.values:
-        if colname.endswith('_1'):
-            swap_dict[colname] = colname[:-2] + '_2'
-        if colname.endswith('_2'):
-            swap_dict[colname] = colname[:-2] + '_1'
+#     # no filering of individuals, we use all them.
 
-    cols = ['start', 'end', 'indiv_1', 'indiv_2', 
-            'dist', 'mismatch', 'match', 
-            'dist_af', 'mismatch_af', 'match_af',
-            'uncalled']
+#     # dict for swapping columns
+#     swap_dict = dict()
+#     for colname in dist_data.columns.values:
+#         if colname.endswith('_1'):
+#             swap_dict[colname] = colname[:-2] + '_2'
+#         if colname.endswith('_2'):
+#             swap_dict[colname] = colname[:-2] + '_1'
 
-    dist_data_twice = (pandas.concat([dist_data[cols],
-                                      dist_data[cols].rename(columns=swap_dict)])
-        .sort_values(['indiv_1', 'start'])
-        .reset_index(drop=True)
-        )
+#     cols = ['start', 'end', 'indiv_1', 'indiv_2', 
+#             'dist', 'mismatch', 'match', 
+#             'dist_af', 'mismatch_af', 'match_af',
+#             'uncalled']
+
+#     dist_data_twice = (pandas.concat([dist_data[cols],
+#                                       dist_data[cols].rename(columns=swap_dict)])
+#         .sort_values(['indiv_1', 'start'])
+#         .reset_index(drop=True)
+#         )
     
-    # mask uncalled windows:
-    dist_data_twice.dist.where(dist_data_twice.uncalled <= analysis_globals.max_uncalled_bases, 
-                               inplace=True)
-    dist_data_twice.dist_af.where(dist_data_twice.uncalled <= analysis_globals.max_uncalled_bases, 
-                                inplace=True)
+#     # mask uncalled windows:
+#     dist_data_twice.dist.where(dist_data_twice.uncalled <= analysis_globals.max_uncalled_bases, 
+#                                inplace=True)
+#     dist_data_twice.dist_af.where(dist_data_twice.uncalled <= analysis_globals.max_uncalled_bases, 
+#                                 inplace=True)
 
-    return dist_data_twice
+#     return dist_data_twice
 
+##### Added pwdist_cutoff as argument (substituting for analysis_globals.pwdist_cutoff)
+##### Added pwdist_cutoff as argument (substituting for analysis_globals.pwdist_cutoff)
 
-def call_rolling_windows(df):
+def call_rolling_windows(df, pwdist_cutoff, MIN_SWEEP_CLADE_SIZE):
     """
     Takes a df with all pwdiffs in a 500kb rolling window between 
     one indiv and all other individuals. Returns all nan if one or more 100kb 
@@ -69,10 +73,10 @@ def call_rolling_windows(df):
         # mean distance between indiv_1 and each indiv_2 for the 500kb window
         pwdiffs = df.groupby(['indiv_2']).apply(mean_indiv_dist, 'dist')
 
-        mean_clade_dist = pwdiffs.loc[pwdiffs <= analysis_globals.pwdist_cutoff].mean() 
+        mean_clade_dist = pwdiffs.loc[pwdiffs <= pwdist_cutoff].mean() 
         
         # number of indiv_2 closer to indiv_1 than cutoff across the 500kb window
-        clade_size = (pwdiffs <= analysis_globals.pwdist_cutoff).sum() 
+        clade_size = (pwdiffs <= pwdist_cutoff).sum() 
         
         # call if clade size is larger then cutoff
         called = clade_size >= MIN_SWEEP_CLADE_SIZE
@@ -83,9 +87,9 @@ def call_rolling_windows(df):
     else:
         pwdiffs_af = df.groupby(['indiv_2']).apply(mean_indiv_dist, 'dist_af')
 
-        mean_clade_dist_af = pwdiffs.loc[pwdiffs_af <= analysis_globals.pwdist_cutoff].mean() 
+        mean_clade_dist_af = pwdiffs.loc[pwdiffs_af <= pwdist_cutoff].mean() 
 
-        clade_size_af = (pwdiffs_af <= analysis_globals.pwdist_cutoff).sum()
+        clade_size_af = (pwdiffs_af <= pwdist_cutoff).sum()
 
         called_af = clade_size_af >= MIN_SWEEP_CLADE_SIZE
 
@@ -114,15 +118,15 @@ def call_swept(df):
                         clade_size_af=[max_clade_size_af],
                         clade_mean_dist_af=[largest_clade_offsets_af['dist_af'].mean()]))
 
-
-def window_stats(df):
+##### changed name to _window_stats and made a partial function to add pwdist_cutoff as arg (substituting for analysis_globals.pwdist_cutoff)
+def _window_stats(df, pwdist_cutoff, MIN_SWEEP_CLADE_SIZE):
 
     return pandas.DataFrame({
                             'mean_dist': [df.dist.mean()],
                             'mean_dist_af': [df.dist_af.mean()],
-                            'win_swept': (df.dist <= analysis_globals.pwdist_cutoff).sum() >= \
+                            'win_swept': (df.dist <= pwdist_cutoff).sum() >= \
                                             MIN_SWEEP_CLADE_SIZE,
-                            'win_swept_af': (df.dist_af <= analysis_globals.pwdist_cutoff).sum() >= 
+                            'win_swept_af': (df.dist_af <= pwdist_cutoff).sum() >= 
                                             MIN_SWEEP_CLADE_SIZE,
                             'prop_indivs_missing': [numpy.isnan(df.dist).sum() / df.dist.size]
                             })
@@ -132,7 +136,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--nr_wins', type=int, default=5, help='')
 parser.add_argument('--offset', type=int, default=100000, help='')
 parser.add_argument('--cpus', type=int, help='')
-parser.add_argument('--dump-dist-twice', dest='dump_dist_twice', type=str, default=None, help='')
+##### Added these two options
+parser.add_argument('--min-sweep-clade-percent', dest='min_sweep_clade_percent', type=int)
+parser.add_argument('--pwdist-cutoff', dest='pwdist_cutoff', type=float)
+
+# parser.add_argument('--dump-dist-twice', dest='dump_dist_twice', type=str, default=None, help='')
 parser.add_argument('dist_file_name', type=str, help='')
 parser.add_argument('sweep_data_file_name', type=str, help='')
 args = parser.parse_args()
@@ -147,13 +155,18 @@ offset = args.offset
 offsets = [x * offset for x in range(nr_wins)]
 window_size = len(offsets) * offset
 
-male_dist_data = pandas.read_hdf(args.dist_file_name)
+###### no longer reading dist_file name
+# male_dist_data = pandas.read_hdf(args.dist_file_name)
 
-all_male_dist_twice = dist_twice(male_dist_data)
+# all_male_dist_twice = dist_twice(male_dist_data)
+###### reading twice file instead.
+all_male_dist_twice = pandas.read_hdf(args.dist_file_name)
 
 nr_indiv = all_male_dist_twice.indiv_1.unique().size
 
-MIN_SWEEP_CLADE_SIZE = round(analysis_globals.g1000_min_sweep_clade_proportion * nr_indiv)
+#MIN_SWEEP_CLADE_SIZE = round(analysis_globals.g1000_min_sweep_clade_proportion * nr_indiv)
+##### defining MIN_SWEEP_CLADE_SIZE using arg to script
+MIN_SWEEP_CLADE_SIZE = round(nr_indiv * args.min_sweep_clade_percent / 100)
 
 lst = list()
 # loop over five offsets of 500kb windows
@@ -165,7 +178,8 @@ for off in offsets:
                 )
     # with Pool(nr_cpu) as p:
     #     df = pandas.concat(p.map(call_rolling_windows, [group for name, group in groups]))
-    df = pandas.concat([call_rolling_windows(group) for name, group in groups])
+    ##### added pwdist arg to function call
+    df = pandas.concat([call_rolling_windows(group, args.pwdist_cutoff, MIN_SWEEP_CLADE_SIZE) for name, group in groups])
 
     lst.append(df)
 
@@ -175,6 +189,10 @@ sweep_calls = (pandas.concat(lst)
                 .apply(call_swept)
                 .reset_index(level=['indiv_1', 'start'])
                 )
+
+##### partial version of window_stats
+import functools
+window_stats = functools.partial(_window_stats, pwdist_cutoff=args.pwdist_cutoff, MIN_SWEEP_CLADE_SIZE=MIN_SWEEP_CLADE_SIZE)
 
 # merge window sweep info with distance data
 gr_cols = ['indiv_1', 'start', 'end']
@@ -214,11 +232,11 @@ sweep_data['swept_af'] = numpy.bitwise_and(sweep_data['called_af'],
                                         sweep_data['run_length_af'] >= analysis_globals.min_run_length)
 
 
-if args.dump_dist_twice:
-    all_male_dist_twice.to_hdf(args.dump_dist_twice, 'df', 
-                               data_columns=['start', 'end', 
-                                         'indiv_1', 'indiv_2'],
-                               format='table', mode='w')
+# if args.dump_dist_twice:
+#     all_male_dist_twice.to_hdf(args.dump_dist_twice, 'df', 
+#                                data_columns=['start', 'end', 
+#                                          'indiv_1', 'indiv_2'],
+#                                format='table', mode='w')
 
     
 # write to hdf output file
