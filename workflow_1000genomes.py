@@ -82,6 +82,18 @@ for pop, indivs in g1000_males_by_pop.items():
     for i in indivs:
         g1000_pops_by_male[i] = pop
 
+# mappings between female and pop
+g1000_females_by_pop = defaultdict(list)
+g1000_female_pop_files = dict()
+for pop in analysis_globals.g1000_pop_info.population:
+    pop_file = os.path.join(faststorage, 'data', '1000Genomes', 'metainfo', '{}_female.txt'.format(pop))
+    g1000_female_pop_files[pop] = pop_file
+    with open(pop_file) as f:
+        g1000_females_by_pop[pop] = f.read().split()
+g1000_pops_by_female = dict()
+for pop, indivs in g1000_females_by_pop.items():
+    for i in indivs:
+        g1000_pops_by_female[i] = pop
 
 #################################################################################
 # Write gzipped phased haplotypes for all indiviudals 
@@ -267,7 +279,7 @@ for chrom in ['2'] + ['X']:
             g1000_male_admix_masked_dist_file_names[chrom][pop].append(out_file_name)
 
             gwf.target_from_template('g1000_male_dist_admix_masked_windows1_{}_{}_{}'.format(pop, chrom, i), 
-                admix_masked_dist_for_x_pair_template(str(file1), str(file2), 
+                admix_masked_dist_for_pair_template(str(file1), str(file2), 
                 dist_binsize, 'NA', indiv1, hap1, indiv2, hap2, str(out_file_name)))
 
             i += 1
@@ -278,6 +290,7 @@ for chrom in ['2'] + ['X']:
 #################################################################################
 
 g1000_male_dist_admix_masked_store_files = defaultdict(dict)
+g1000_male_dist_twice_admix_masked_store_files = defaultdict(dict)
 
 # dir for files
 g1000_male_dist_admix_masked_store_dir = os.path.join(mydir, 'steps', '1000genomes', 'male_dist_admix_masked_stores')
@@ -292,7 +305,7 @@ for chrom in ['2'] + ['X']:
 
     for pop, pop_files in g1000_male_admix_masked_dist_file_names[chrom].items():
 
-        pop_dist_dir = os.path.join(g1000_male_admix_masked_dist_dir, pop)
+        pop_dist_dir = os.path.join(g1000_male_admix_masked_dist_dir, chrom, pop)
 
         pop_store_dir = os.path.join(chrom_dir, pop)
         if not os.path.exists(pop_store_dir):
@@ -301,43 +314,69 @@ for chrom in ['2'] + ['X']:
         pop_store_base_name = "male_dist_data_chr{}_{}_{}".format(chrom, bp2str(dist_binsize), pop)
         pop_store_file = modpath(pop_store_base_name, parent=pop_store_dir, suffix='.hdf')
 
+        # dist twice out file
+        pop_store_base_name = modpath(pop_store_file, parent='', suffix='')
+        dist_twice_pop_store_file = modpath(pop_store_base_name + '_twice', 
+                                            parent=os.path.dirname(pop_store_file), suffix='.hdf')
+        
         g1000_male_dist_admix_masked_store_files[chrom][pop] = pop_store_file
+        g1000_male_dist_twice_admix_masked_store_files[chrom][pop] = dist_twice_pop_store_file
 
-        g = gwf.target("g1000_build_dist_datasets_{}_{}".format(chrom, pop), inputs=pop_files, outputs=[pop_store_file], 
+        g = gwf.target("g1000_build_dist_datasets_{}_{}".format(chrom, pop), inputs=pop_files, 
+                       outputs=[pop_store_file, dist_twice_pop_store_file], 
             memory='8g', walltime='1:00:00') << """
 
             source activate simons
             python scripts/g1000_build_male_dist_admix_masked_datasets.py \
                 --dist-dir {dist_dir} \
-                --out-file {out_file}
+                --out-file {out_file} \
+                --dist-twice-out-file {dist_twice_out_file}
 
-        """.format(dist_dir=pop_dist_dir, out_file=pop_store_file)
+        """.format(dist_dir=pop_dist_dir, out_file=pop_store_file, dist_twice_out_file=dist_twice_pop_store_file)
 
 
 #################################################################################
 # Call sweeps on the distance data with given pwdist_cutoff and min_sweep_clade_size
 #################################################################################
 
-min_sweep_clade_percent = int(analysis_globals.g1000_min_sweep_clade_proportion * 100)
+#min_sweep_clade_percent = int(analysis_globals.g1000_min_sweep_clade_proportion * 100)
 
-g1000_male_dist_admix_masked_sweep_data_files = defaultdict(dict)
+##### made pwdist_cutoff a variable that is passed to the script
+##### made min_sweep_clade_percent a variable that is passed to the script
+for pwdist_cutoff in [5e-5, 6e-5]:
+#for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
 
-for chrom in ['2'] + ['X']:
+    for min_sweep_clade_percent in range(0, 100, 1):
+#     for min_sweep_clade_percent in [int(analysis_globals.g1000_min_sweep_clade_proportion * 100)]:
 
-    for pop, pop_store_file in g1000_male_dist_admix_masked_store_files[chrom].items():
+#        g1000_male_dist_admix_masked_sweep_data_files = defaultdict(dict)
 
-        pop_sweep_data_file = modpath("sweep_data_{}_{}%.hdf".format(analysis_globals.pwdist_cutoff, min_sweep_clade_percent),
-                                        parent=os.path.dirname(pop_store_file))
+        for chrom in ['2'] + ['X']:
 
-        pop_store_base_name = modpath(pop_store_file, parent='', suffix='')
-        pop_dist_twice_file = modpath(pop_store_base_name + '_twice', parent=os.path.dirname(pop_store_file), suffix='.hdf')
+            for pop, pop_store_file in g1000_male_dist_admix_masked_store_files[chrom].items():
 
-        g1000_male_dist_admix_masked_sweep_data_files[chrom][pop] = pop_sweep_data_file
+#                 #######################################
+#                 if pop != 'CHB':
+#                     continue
+#                 #######################################
+                
+                pop_sweep_data_file = modpath("sweep_data_{}_{}%.hdf".format(pwdist_cutoff, min_sweep_clade_percent),
+                                                parent=os.path.dirname(pop_store_file))
 
-        gwf.target_from_template('g1000_male_sweep_data_{}_{}'.format(chrom, pop), 
-            g1000_sweep_data(pop_store_file, pop_sweep_data_file, dump_dist_twice=pop_dist_twice_file))
+        ##### 
+        #         pop_store_base_name = modpath(pop_store_file, parent='', suffix='')
+        #         pop_dist_twice_file = modpath(pop_store_base_name + '_twice', parent=os.path.dirname(pop_store_file), suffix='.hdf')
 
+                dist_twice_pop_store_file = g1000_male_dist_twice_admix_masked_store_files[chrom][pop]
 
+#                g1000_male_dist_admix_masked_sweep_data_files[chrom][pop] = pop_sweep_data_file
+
+        #         gwf.target_from_template('g1000_male_sweep_data_{}_{}'.format(chrom, pop), 
+        #             g1000_sweep_data(pop_store_file, pop_sweep_data_file, dump_dist_twice=pop_dist_twice_file))
+                gwf.target_from_template('g1000_male_sweep_data_{}_{}_{:f}_{}'.format(
+                    chrom, pop, pwdist_cutoff, min_sweep_clade_percent), 
+                    g1000_sweep_data(dist_twice_pop_store_file, pop_sweep_data_file, 
+                                     min_sweep_clade_percent, pwdist_cutoff))
 
 
 #################################################################################
@@ -360,7 +399,7 @@ fst_pop_sets += np.array(fst_pop_sets).T.tolist()
 
 for fst_pops in fst_pop_sets:
 
-    fst_pop_files = [g1000_male_pop_files[p] for p in fst_pops]
+    fst_pop_files = [g1000_female_pop_files[p] for p in fst_pops]
 
     for chrom in autosomes + ['X']:
 
@@ -368,7 +407,89 @@ for fst_pops in fst_pop_sets:
         if not os.path.exists(chrom_dir): 
             os.makedirs(chrom_dir)
 
-        out_file = modpath('weir_fst_{}_{}.txt'.format(chrom, '_'.join(fst_pops)), parent=chrom_dir)
+        out_file = modpath('weir_fst_{}_{}.windowed.weir.fst'.format(chrom, '_'.join(fst_pops)), parent=chrom_dir)
 
         gwf.target_from_template('fst_{}_{}'.format(chrom, '_'.join(fst_pops)),
             g1000_fst(g1000_vcf_files[chrom], fst_pop_files, out_file))
+
+
+#################################################################################
+# hapDAF in all females
+#################################################################################
+
+def hapdaf_genetic(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file):
+    """
+    Computes 
+    """
+
+    options = {'memory': '1g',
+               'walltime': '10:00:00',
+              } 
+
+    spec = """
+
+    source activate simons
+    source /com/extra/vcftools/0.1.14/load.sh
+    vcftools --gzvcf {vcf_file} --keep {indiv_file} --remove-indels --remove-filtered-all \
+        --max-alleles 2 --recode --recode-INFO-all --stdout | python scripts/hapdaf.py \
+        --vcf stdin --ancestral {ancestral_file} --recmap {rec_map_file} --window 0.05 --outfile {out_file}
+
+    """.format(vcf_file=vcf_file, indiv_file=indiv_file, ancestral_file=ancestral_file, 
+            rec_map_file=rec_map_file, out_file=out_file)
+
+    
+    return [vcf_file, indiv_file, ancestral_file, rec_map_file], [out_file], options, spec
+
+def hapdaf_physical(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file):
+    """
+    Computes 
+    """
+
+    options = {'memory': '1g',
+               'walltime': '10:00:00',
+              } 
+
+    spec = """
+
+    source activate simons
+    source /com/extra/vcftools/0.1.14/load.sh
+    vcftools --gzvcf {vcf_file} --keep {indiv_file} --remove-indels --remove-filtered-all \
+        --max-alleles 2 --recode --recode-INFO-all --stdout | python scripts/hapdaf.py \
+        --vcf stdin --ancestral {ancestral_file} --window 50000 --outfile {out_file}
+
+    """.format(vcf_file=vcf_file, indiv_file=indiv_file, ancestral_file=ancestral_file, out_file=out_file)
+    
+    return [vcf_file, indiv_file, ancestral_file, rec_map_file], [out_file], options, spec
+
+
+g1000_hapdaf_dir = os.path.join(mydir, 'steps', '1000genomes', 'hapdaf')
+if not os.path.exists(g1000_hapdaf_dir):
+    os.makedirs(g1000_hapdaf_dir)
+
+# write a file with all female non-Africans:
+female_indiv_file = modpath('non_afr_females.txt', parent=g1000_hapdaf_dir)
+# non_afr_pops = analysis_globals.g1000_pop_info.loc[lambda df: df.superpop != 'AFR', 'population'].tolist()
+# female_nonafr = list()
+# for p in non_afr_pops:
+#     female_nonafr.extend(g1000_females_by_pop[p])
+# with open(female_indiv_file, 'w') as f:
+#     print('\n'.join(female_nonafr), file=f)
+
+# write a file with all male non-Africans:
+# male_indiv_file = modpath('non_afr_males.txt', parent=g1000_hapdaf_dir)
+# non_afr_pops = analysis_globals.g1000_pop_info.loc[lambda df: df.superpop != 'AFR', 'population'].tolist()
+# male_nonafr = list()
+# for p in non_afr_pops:
+#     male_nonafr.extend(g1000_males_by_pop[p])
+# with open(male_indiv_file, 'w') as f:
+#     print('\n'.join(male_nonafr), file=f)
+
+g1000_hapdaf_files = list()
+for chrom, vcf_file in g1000_vcf_files.items():
+
+    ancestral_file = '/home/kmt/simons/faststorage/data/1000Genomes/ancestral_alignmens/human_ancestor_GRCh37_e59/human_ancestor_{}.fa'.format(chrom)
+    rec_map_file = 'data/plink_maps/plink.GRCh37.map/plink.chr{}.GRCh37.map'.format(chrom)
+    out_file = modpath('hapdaf_physical_{}.txt'.format(chrom), parent=g1000_hapdaf_dir)
+    g1000_hapdaf_files.append(out_file)
+
+    gwf.target_from_template('hapdaf_{}'.format(chrom), hapdaf_physical(vcf_file, female_indiv_file, ancestral_file, rec_map_file, out_file))
