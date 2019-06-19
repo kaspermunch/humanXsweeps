@@ -84,6 +84,8 @@ mut_per_year = 4.3e-10
 # generation time
 gen_time = 29
 
+par1_start, par1_end = 60001, 2699520
+par2_start, par2_end = 154931044, 155260560
 
 #############################
 
