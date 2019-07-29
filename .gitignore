@@ -110,20 +110,33 @@ BACKUP/
 steps/
 trash/
 
+
 # symlinks to ignore
 results
 figures
 plots
+data
+sandbox
+
+# other dirs to ignore
 
 argweaver/
 ctools/
 kwarg/
 slim
+hapdaf/
+ohana/
 
 .DS_Store
 ._*
-
 .gwf*
+.vscode/
+
+GenomicWindows/
+Neanderthal_mask_problem.txt
+old_simons_blue_plots/
+sweepstats/
+
 
 # but not README.md
 !**/README.md
