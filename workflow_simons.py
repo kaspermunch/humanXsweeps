@@ -789,7 +789,27 @@ for file1, file2 in itertools.combinations(sorted(admix_masked_male_x_haploids),
 #################################################################################
 
 
-# dir for files
+# # dir for files
+# male_dist_admix_masked_store_dir = os.path.join(mydir, 'steps', 'male_dist_admix_masked_stores')
+# if not os.path.exists(male_dist_admix_masked_store_dir):
+#     os.makedirs(male_dist_admix_masked_store_dir)
+
+# male_dist_admix_masked_store_base_name = "male_dist_data_chrX_{}".format(bp2str(dist_binsize))
+# male_dist_admix_masked_store_file = modpath(male_dist_admix_masked_store_base_name, parent=male_dist_admix_masked_store_dir, suffix='.hdf')
+
+# g = gwf.target("build_male_dist_admix_masked_datasets1", inputs=male_admix_masked_dist_file_names, outputs=[male_dist_admix_masked_store_file], 
+#     memory='80g', walltime='11:00:00') << """
+
+#     source activate simons
+#     python scripts/build_male_dist_admix_masked_datasets.py \
+#         --dist-dir {dist_dir} \
+#         --meta-data-dir {metadata_dir} \
+#         --out-file {out_file}
+
+# """.format(dist_dir=male_admix_masked_dist_dir, out_file=male_dist_admix_masked_store_file, metadata_dir=metadata_dir)
+
+
+########## NEW VERSION ########################
 male_dist_admix_masked_store_dir = os.path.join(mydir, 'steps', 'male_dist_admix_masked_stores')
 if not os.path.exists(male_dist_admix_masked_store_dir):
     os.makedirs(male_dist_admix_masked_store_dir)
@@ -797,30 +817,94 @@ if not os.path.exists(male_dist_admix_masked_store_dir):
 male_dist_admix_masked_store_base_name = "male_dist_data_chrX_{}".format(bp2str(dist_binsize))
 male_dist_admix_masked_store_file = modpath(male_dist_admix_masked_store_base_name, parent=male_dist_admix_masked_store_dir, suffix='.hdf')
 
-g = gwf.target("build_male_dist_admix_masked_datasets1", inputs=male_admix_masked_dist_file_names, outputs=[male_dist_admix_masked_store_file], 
-    memory='80g', walltime='11:00:00') << """
+male_dist_twice_admix_masked_store_file = modpath(male_dist_admix_masked_store_base_name + '_twice',
+     parent=os.path.dirname(male_dist_admix_masked_store_file), suffix='.hdf')
+
+g = gwf.target("build_male_dist_admix_masked_datasets1", 
+               inputs=male_admix_masked_dist_file_names, 
+               outputs=[male_dist_admix_masked_store_file, male_dist_twice_admix_masked_store_file], 
+               memory='80g', walltime='11:00:00') << """
 
     source activate simons
     python scripts/build_male_dist_admix_masked_datasets.py \
         --dist-dir {dist_dir} \
         --meta-data-dir {metadata_dir} \
-        --out-file {out_file}
+        --out-file {out_file} \
+        --dist-twice-out-file {dist_twice_out_file}
 
-""".format(dist_dir=male_admix_masked_dist_dir, out_file=male_dist_admix_masked_store_file, metadata_dir=metadata_dir)
+""".format(dist_dir=male_admix_masked_dist_dir, out_file=male_dist_admix_masked_store_file, metadata_dir=metadata_dir,
+          dist_twice_out_file=male_dist_twice_admix_masked_store_file)
+                                                  
+                                                  
+########## NEW VERSION ########################
+
+
+
 
 #################################################################################
 # Call sweeps on the distance data with given pwdist_cutoff and min_sweep_clade_size
 #################################################################################
 
-male_dist_admix_masked_sweep_data_file = \
-    os.path.join(male_dist_admix_masked_store_dir, "sweep_data_{}_{}.hdf".format(analysis_globals.pwdist_cutoff, 
-                                                                                 analysis_globals.min_sweep_clade_size))
+# male_dist_admix_masked_sweep_data_file = \
+#     os.path.join(male_dist_admix_masked_store_dir, "sweep_data_{}_{}.hdf".format(analysis_globals.pwdist_cutoff, 
+#                                                                                  analysis_globals.min_sweep_clade_size))
 
-male_dist_admix_masked_dist_twice_file = modpath(male_dist_admix_masked_store_base_name + '_twice', parent=male_dist_admix_masked_store_dir, suffix='.hdf')
+# male_dist_admix_masked_dist_twice_file = modpath(male_dist_admix_masked_store_base_name + '_twice', parent=male_dist_admix_masked_store_dir, suffix='.hdf')
 
-gwf.target_from_template('male_dist_admix_masked_sweep_data', sweep_data(male_dist_admix_masked_store_file, 
-                                                                         male_dist_admix_masked_sweep_data_file, 
-                                                                         dump_dist_twice=male_dist_admix_masked_dist_twice_file))
+# gwf.target_from_template('male_dist_admix_masked_sweep_data', sweep_data(male_dist_admix_masked_store_file, 
+#                                                                          male_dist_admix_masked_sweep_data_file, 
+#                                                                          dump_dist_twice=male_dist_admix_masked_dist_twice_file))
+
+########## NEW VERSION ########################
+
+male_dist_admix_masked_sweep_data_files = defaultdict(list)
+                                                  
+for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
+    for min_sweep_clade_percent in range(0, 100, 1):
+
+        sweep_stat_dir = os.path.join(male_dist_admix_masked_store_dir, str(pwdist_cutoff))
+        if not os.path.exists(sweep_stat_dir):
+            os.makedirs(sweep_stat_dir)
+            
+        male_dist_admix_masked_sweep_data_file = modpath("sweep_data_{}_{}%.hdf".format(pwdist_cutoff, min_sweep_clade_percent), 
+                                                         parent=sweep_stat_dir)                                                  
+        male_dist_admix_masked_sweep_data_files[pwdist_cutoff].append(male_dist_admix_masked_sweep_data_file)
+                                                  
+        gwf.target_from_template('male_dist_admix_masked_sweep_data_{:f}_{}'.format(
+                                 pwdist_cutoff, min_sweep_clade_percent),
+                                 sweep_data(male_dist_twice_admix_masked_store_file,
+                                            male_dist_admix_masked_sweep_data_file, 
+                                            min_sweep_clade_percent, 
+                                            pwdist_cutoff ))
+
+
+
+
+########## NEW VERSION ########################
+
+
+
+#################################################################################
+# Use hundred sweep calls to largetst min_sweep_clade_percent that allow
+# a sweep to be called (AKA mixcalling)
+#################################################################################
+
+for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
+
+    sweep_data_dir = os.path.dirname(male_dist_admix_masked_sweep_data_files[pwdist_cutoff][0])
+
+    sweep_data_mixcall_file = modpath("sweep_data_mixcall_{}.hdf".format(pwdist_cutoff),
+        parent=os.path.dirname(sweep_data_dir))
+
+    g = gwf.target("sweep_data_mixcalling_{:f}".format(pwdist_cutoff),
+            inputs=male_dist_admix_masked_sweep_data_files[pwdist_cutoff], 
+            outputs=[sweep_data_mixcall_file], 
+            memory='8g', walltime='1:00:00') << """
+
+        source activate simons
+        python scripts/sweep_mixcalling.py {sweep_data_inputdir} {sweep_data_outfile}
+
+    """.format(sweep_data_inputdir=sweep_data_dir, sweep_data_outfile=sweep_data_mixcall_file)
 
 
 # #################################################################################
@@ -1127,17 +1211,10 @@ hg19_map_files = reciprocal_liftover(hg38_map_files,
 # slim simulations
 #################################################################################
 
-# slim_file_list = ['scripts/bottle.slim', 
-#                   'scripts/complete_before_bottle.slim',                  
-#                   'scripts/complete_in_bottle.slim',                  
-#                   'scripts/complete_after_bottle.slim',
-#                   'scripts/partial_before_bottle.slim',                  
-#                   'scripts/partial_in_bottle.slim',                  
-#                   'scripts/partial_after_bottle.slim',
-#                   'scripts/complete_after_no_bottle.slim']
-
 slim_tree_files = list()
 slim_dist_files = list()
+slim_dist_twice_files = list()
+sweep_data_mixcall_files = list()
 
 # how many to simulate:
 nr_non_africans = sum(x['Region'] != 'Africa' and x['Genetic sex assignment'] == 'XY' for x in individuals.values())
@@ -1145,6 +1222,10 @@ nr_non_africans = sum(x['Region'] != 'Africa' and x['Genetic sex assignment'] ==
 simulations_dir = os.path.join(mydir, 'steps', 'slim', 'simulations')
 
 slim_output_dir = simulations_dir
+
+slim_sweep_data_dir = os.path.join(mydir, 'steps', 'slim', 'sweep_data')
+if not os.path.exists(slim_sweep_data_dir):
+     os.makedirs(slim_sweep_data_dir)
 
 total_sim_generations = 100000
 
@@ -1178,66 +1259,124 @@ x_auto_ratios = [0.66 * x for x in [1, 0.73]]
 #rec_rates_per_gen = [0.465e-8 * x for x in [1, 2/4, 2/6]] # <- reductions below one reflect male/famale retios of 2 and 4
 rec_rates_per_gen = [0.465e-8, 1.16e-8]
 
-for x_auto_ratio in x_auto_ratios:
-    for rec_rate_per_gen in rec_rates_per_gen:
+# for x_auto_ratio in x_auto_ratios:
+#     for rec_rate_per_gen in rec_rates_per_gen:
 
-        assert chrom == 'X'
-        meiosis_rec_rate =  rec_rate_per_gen * 3 / 2
-        xreduction = x_auto_ratio / 0.75
+#         assert chrom == 'X'
+#         meiosis_rec_rate =  rec_rate_per_gen * 3 / 2
+#         xreduction = x_auto_ratio / 0.75
         
-        for demog_name, demog in demographies:
-            for sweep_type in ['nosweep']: #['complete', 'partial', 'nosweep']:
-                for sweep_start in [198275]: #[198965, 198275, 197586, 196551]: # pasted fro nb_25_slim_simulations notebook
-                    for selcoef in [0.1]: #[0.01, 0.05, 0.1, 0.2]: 
+#         for demog_name, demog in demographies:
+#             for sweep_type in ['nosweep']: #['complete', 'partial', 'nosweep']:
+#                 for sweep_start in [198275]: #[198965, 198275, 197586, 196551]: # pasted fro nb_25_slim_simulations notebook
+#                     for selcoef in [0.1]: #[0.01, 0.05, 0.1, 0.2]: 
 
-                        id_str = '{}_{}_{}_{}_{}_{}_{}'.format(demog_name,
-                        round(x_auto_ratio*100), round(rec_rate_per_gen * 1e12),
-                        chrom, sweep_type, sweep_start, int(selcoef*100))
+#                         id_str = '{}_{}_{}_{}_{}_{}_{}'.format(demog_name,
+#                         round(x_auto_ratio*100), round(rec_rate_per_gen * 1e12),
+#                         chrom, sweep_type, sweep_start, int(selcoef*100))
 
-                        slim_output_dir = os.path.join(simulations_dir, id_str.replace('_', '/'))
-                        if not os.path.exists(slim_output_dir): os.makedirs(slim_output_dir)
+#                         slim_output_dir = os.path.join(simulations_dir, id_str.replace('_', '/'))
+#                         if not os.path.exists(slim_output_dir): os.makedirs(slim_output_dir)
 
-                        for i in range(15):
-                            sim_output_prefix = os.path.join(slim_output_dir, "{}_{}".format(id_str, i))
-                            slim_tree_file = sim_output_prefix + '.trees'
-                            slim_tree_files.append(slim_tree_file)
-                            slim_dist_file = sim_output_prefix + '.hdf'
-                            slim_dist_files.append(slim_dist_file)
+#                         for i in range(15):
+#                             sim_output_prefix = os.path.join(slim_output_dir, "{}_{}".format(id_str, i))
+#                             slim_tree_file = sim_output_prefix + '.trees'
+#                             slim_tree_files.append(slim_tree_file)
+#                             slim_dist_file = sim_output_prefix + '.hdf'
+#                             slim_dist_files.append(slim_dist_file)
 
-                            gwf.target_from_template("{}_{}".format(id_str, i),
-                                slim_sim(selcoef, analysis_globals.gen_time, 
-                                '{:.12f}'.format(analysis_globals.mut_per_year), 
-                                meiosis_rec_rate,
-                                nr_non_africans,
-                                sweep_type, sweep_start, demog, 
-                                chrom, xreduction, 
-                                total_sim_generations,
-                                slim_tree_file, slim_dist_file))
+#                             # run the simulation and compute pairwise differences
+#                             gwf.target_from_template("{}_{}".format(id_str, i),
+#                                 slim_sim(selcoef, analysis_globals.gen_time, 
+#                                 '{:.12f}'.format(analysis_globals.mut_per_year), 
+#                                 meiosis_rec_rate,
+#                                 nr_non_africans,
+#                                 sweep_type, sweep_start, demog, 
+#                                 chrom, xreduction, 
+#                                 total_sim_generations,
+#                                 slim_tree_file, slim_dist_file))
 
-##################################################################################
-# calling sweeps on slim simulations
-#################################################################################
+#                             ### NEW #####################################
+#                             # make dist twice file
+#                             slim_dist_twice_file = modpath(slim_dist_file, base=modpath(slim_dist_file, parent='', suffix='')+'_twice')
+#                             slim_dist_twice_files.append(slim_dist_twice_file)
 
-slim_sweep_data_dir = os.path.join(mydir, 'steps', 'slim', 'sweep_data')
-if not os.path.exists(slim_sweep_data_dir):
-    os.makedirs(slim_sweep_data_dir)
-
-slim_sweep_data_files = list()
-for i, slim_dist_file in enumerate(slim_dist_files):
-    slim_sweep_data_file = modpath(slim_dist_file, parent=slim_sweep_data_dir)
-    slim_sweep_data_files.append(slim_sweep_data_file)
-    gwf.target_from_template('slim_sweep_data_{}'.format(i), sweep_data(slim_dist_file, slim_sweep_data_file, 
-                                                                        cores=1, memory='8g', walltime='00:30:00'))
+#                             gwf.target_from_template("{}_{}_dist_twice".format(id_str, i),
+#                                 slim_dist_twice(slim_dist_file, slim_dist_twice_file))
 
 
-#################################################################################
-# compute prop swept for all slim sweep data in a file that includes simulation info
-#################################################################################
+#                             # call sweeps with multiple min_clade_sizes
+
+#                             sweep_data_files = list()
+                                                                            
+#                             for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
+#                                 for min_sweep_clade_percent in range(0, 100, 10):
+
+#                                     sweep_data_dir = os.path.join(slim_sweep_data_dir, 
+#                                         modpath(slim_dist_file, suffix='', parent=''),                                    
+#                                         str(pwdist_cutoff))
+
+#                                     if not os.path.exists(sweep_data_dir):
+#                                         os.makedirs(sweep_data_dir)
+
+#                                     sweep_data_file = modpath("sweep_data_{}_{}%.hdf".format(pwdist_cutoff, min_sweep_clade_percent), 
+#                                                                                     parent=sweep_data_dir)                                                  
+#                                     sweep_data_files.append(sweep_data_file)
+                                                                            
+#                                     gwf.target_from_template(id_str+'_{}_{:f}_{}'.format(i,
+#                                                             pwdist_cutoff, min_sweep_clade_percent),
+#                                                             sweep_data(slim_dist_twice_file,
+#                                                                         sweep_data_file, 
+#                                                                         min_sweep_clade_percent, 
+#                                                                         pwdist_cutoff ))
+
+#                                 # call sweeps with mix calling for this pwdist_cutoff
+#                                 sweep_data_mixcall_file = modpath("sweep_data_mixcall_{}.hdf".format(pwdist_cutoff),
+#                                     parent=os.path.dirname(sweep_data_dir))
+
+#                                 sweep_data_mixcall_files.append(sweep_data_mixcall_file)
+
+#                                 g = gwf.target(id_str+'_{}_{:f}'.format(i, pwdist_cutoff),
+#                                         inputs=sweep_data_files, 
+#                                         outputs=[sweep_data_mixcall_file], 
+#                                         memory='8g', walltime='1:00:00') << """
+
+#                                     source activate simons
+#                                     python scripts/sweep_mixcalling.py {sweep_data_inputdir} {sweep_data_outfile}
+
+#                                 """.format(sweep_data_inputdir=sweep_data_dir, sweep_data_outfile=sweep_data_mixcall_file)
+
+
+#                             # IF THIS WORKS, THEN DELETE *.HDF FILES IN STEPS/SLIM/SWEEP_DATA 
+
+
+#                             ### NEW #####################################
+
+
+# ##################################################################################
+# # calling sweeps on slim simulations
+# #################################################################################
+
+# slim_sweep_data_dir = os.path.join(mydir, 'steps', 'slim', 'sweep_data')
+# if not os.path.exists(slim_sweep_data_dir):
+#     os.makedirs(slim_sweep_data_dir)
+
+# slim_sweep_data_files = list()
+# for i, slim_dist_file in enumerate(slim_dist_files):
+#     slim_sweep_data_file = modpath(slim_dist_file, parent=slim_sweep_data_dir)
+#     slim_sweep_data_files.append(slim_sweep_data_file)
+#     gwf.target_from_template('slim_sweep_data_{}'.format(i), sweep_data(slim_dist_file, slim_sweep_data_file, 
+#                                                                         cores=1, memory='8g', walltime='00:30:00'))
+
+
+# #################################################################################
+# # compute prop swept for all slim sweep data in a file that includes simulation info
+# #################################################################################
 
 slim_summary_file = os.path.join(mydir, 'steps', 'slim', 'slim_summary.hdf')
 
 g = gwf.target("slim_summary", 
-    inputs=slim_sweep_data_files, outputs=[slim_summary_file], 
+    inputs=sweep_data_mixcall_files, outputs=[slim_summary_file], 
     memory='10g', walltime='00:30:00') << """
 
     source activate simons
@@ -1246,7 +1385,7 @@ g = gwf.target("slim_summary",
 """.format(slim_sweep_data_dir=slim_sweep_data_dir, out_file=slim_summary_file)
 
 
-#################################################################################
+# #################################################################################
 
 if __name__ == "__main__":
     print(len(gwf.targets))

@@ -839,8 +839,52 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
     return [], [slim_tree_file, slim_dist_file], options, spec
 
 
+def slim_dist_twice(dist_file, dist_twice_file):
 
-def sweep_data(dist_file, sweep_data_file, dump_dist_twice=None, cores=1, memory='100g', walltime='48:00:00'):
+    options = {'memory': '8g',
+               'walltime': '01:00:00'
+              } 
+
+    spec = """
+
+    source activate simons
+    python scripts/slim_dist_to_dist_twice.py {dist_file} {dist_twice_file}
+
+    """.format(dist_file=dist_file, dist_twice_file=dist_twice_file)
+
+    return [dist_file], [dist_twice_file], options, spec
+
+
+# def sweep_data(dist_file, sweep_data_file, dump_dist_twice=None, cores=1, memory='100g', walltime='48:00:00'):
+#     """
+#     Make and dump data frame with all distances in both directions (indiv_1, indiv2 and indiv_2, indiv_1). 
+#     Then calls sweeps.
+#     """
+
+#     options = {'memory': memory,
+#                'walltime': walltime,
+#                'cores': cores,
+#               } 
+
+#     out_files = [sweep_data_file]
+#     extra_arg = ''
+#     if dump_dist_twice:
+#         extra_arg = '--dump-dist-twice {}'.format(dump_dist_twice)
+#         out_files += [dump_dist_twice]
+    
+#     spec = """
+
+#     source activate simons
+#     python scripts/sweep_calling.py {extra_arg} {dist_file} {sweep_data_file}
+
+#     """.format(extra_arg=extra_arg, dist_file=dist_file, sweep_data_file=sweep_data_file)
+
+#     return [dist_file], out_files, options, spec
+
+
+def sweep_data(dist_file, sweep_data_file, 
+               min_sweep_clade_percent, pwdist_cutoff, 
+               cores=1, memory='90g', walltime='48:00:00'):
     """
     Make and dump data frame with all distances in both directions (indiv_1, indiv2 and indiv_2, indiv_1). 
     Then calls sweeps.
@@ -851,22 +895,18 @@ def sweep_data(dist_file, sweep_data_file, dump_dist_twice=None, cores=1, memory
                'cores': cores,
               } 
 
-    out_files = [sweep_data_file]
-    extra_arg = ''
-    if dump_dist_twice:
-        extra_arg = '--dump-dist-twice {}'.format(dump_dist_twice)
-        out_files += [dump_dist_twice]
-    
     spec = """
 
     source activate simons
-    python scripts/sweep_calling.py {extra_arg} {dist_file} {sweep_data_file}
+    python scripts/sweep_calling.py \
+            --pwdist-cutoff {pwdist_cutoff} \
+            --min-sweep-clade-percent {min_sweep_clade_percent} \
+            {dist_file} {sweep_data_file}
 
-    """.format(extra_arg=extra_arg, dist_file=dist_file, sweep_data_file=sweep_data_file)
+    """.format(dist_file=dist_file, sweep_data_file=sweep_data_file,
+              min_sweep_clade_percent=min_sweep_clade_percent, pwdist_cutoff=pwdist_cutoff)
 
-    return [dist_file], out_files, options, spec
-
-
+    return [dist_file], [sweep_data_file], options, spec
 
 # def g1000_sweep_data(dist_file, sweep_data_file, dump_dist_twice):
 #     """
@@ -909,7 +949,6 @@ def g1000_sweep_data(dist_file, sweep_data_file, min_sweep_clade_percent, pwdist
                min_sweep_clade_percent=min_sweep_clade_percent, pwdist_cutoff=pwdist_cutoff)
 
     return [dist_file], [sweep_data_file], options, spec
-
 
 
 def g1000_fst(vcf_file, pop_files, out_file):

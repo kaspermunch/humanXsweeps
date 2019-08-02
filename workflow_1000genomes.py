@@ -104,7 +104,8 @@ g1000_dir = os.path.join(mydir, 'steps', '1000genomes')
 if not os.path.exists(g1000_dir):
     os.makedirs(g1000_dir)
 
-autosomes = list(map(str, range(1, 23)))
+#autosomes = list(map(str, range(1, 23)))
+autosomes = ['2', '7']
 
 #################################################################################
 # Write a maked href
@@ -114,7 +115,7 @@ g1000_callability_mask_dir = os.path.join(faststorage, 'data/1000Genomes/callabi
 g1000_callability_mask_files = dict([(chrom, os.path.join(g1000_callability_mask_dir,
                 '20140520.chr{}.strict_mask.fasta.gz'.format(chrom))) for chrom in autosomes + ['X']])
 g1000_callability_mask_files['X'] = os.path.join(g1000_callability_mask_dir, '20141020.chrX.strict_mask.fasta.gz')
-assert len(g1000_callability_mask_files) == 23
+assert len(g1000_callability_mask_files) == len(autosomes) + 1
                 
 human_reference = os.path.join(faststorage, 'data/cteam_lite_public3/FullyPublic/Href.fa')
 
@@ -149,7 +150,7 @@ if not os.path.exists(g1000_male_haplo_dir):
     os.makedirs(g1000_male_haplo_dir)
 
 g1000_male_haplotype_files = defaultdict(list)
-for chrom in ['2'] + ['X']:
+for chrom in autosomes + ['X']:
     chrom_dir = os.path.join(g1000_male_haplo_dir, chrom)
     if not os.path.exists(chrom_dir): 
         os.makedirs(chrom_dir)
@@ -230,7 +231,7 @@ g1000_male_admix_masked_dist_file_names = dict()
 # root dir for distance data for each population
 g1000_male_admix_masked_dist_dir = os.path.join(mydir, 'steps', '1000genomes', 'male_haploid_dist_admix_masked')
 
-for chrom in ['2'] + ['X']:
+for chrom in autosomes + ['X']:
 
     chrom_dir = os.path.join(g1000_male_haplo_dir, chrom)
     if not os.path.exists(chrom_dir): 
@@ -297,7 +298,7 @@ g1000_male_dist_admix_masked_store_dir = os.path.join(mydir, 'steps', '1000genom
 if not os.path.exists(g1000_male_dist_admix_masked_store_dir):
     os.makedirs(g1000_male_dist_admix_masked_store_dir)
 
-for chrom in ['2'] + ['X']:
+for chrom in autosomes + ['X']:
 
     chrom_dir = os.path.join(g1000_male_dist_admix_masked_store_dir, chrom)
     if not os.path.exists(chrom_dir): 
@@ -339,29 +340,34 @@ for chrom in ['2'] + ['X']:
 # Call sweeps on the distance data with given pwdist_cutoff and min_sweep_clade_size
 #################################################################################
 
+g1000_male_dist_admix_masked_sweep_data_files = defaultdict(list)
+
 #min_sweep_clade_percent = int(analysis_globals.g1000_min_sweep_clade_proportion * 100)
 
 ##### made pwdist_cutoff a variable that is passed to the script
 ##### made min_sweep_clade_percent a variable that is passed to the script
-for pwdist_cutoff in [5e-5, 6e-5]:
-#for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
+for chrom in autosomes + ['X']:
 
-    for min_sweep_clade_percent in range(0, 100, 1):
-#     for min_sweep_clade_percent in [int(analysis_globals.g1000_min_sweep_clade_proportion * 100)]:
+    for pop, pop_store_file in g1000_male_dist_admix_masked_store_files[chrom].items():
 
-#        g1000_male_dist_admix_masked_sweep_data_files = defaultdict(dict)
+        ##############################
+        if pop not in ['CHB']:
+            continue
+        #############################
 
-        for chrom in ['2'] + ['X']:
+        for pwdist_cutoff in [5e-5, 6e-5]:
 
-            for pop, pop_store_file in g1000_male_dist_admix_masked_store_files[chrom].items():
+            for min_sweep_clade_percent in range(0, 100, 1):
 
-#                 #######################################
-#                 if pop != 'CHB':
-#                     continue
-#                 #######################################
-                
+                sweep_stat_dir = os.path.join(os.path.dirname(pop_store_file), str(pwdist_cutoff))
+                if not os.path.exists(sweep_stat_dir):
+                    os.makedirs(sweep_stat_dir)
                 pop_sweep_data_file = modpath("sweep_data_{}_{}%.hdf".format(pwdist_cutoff, min_sweep_clade_percent),
-                                                parent=os.path.dirname(pop_store_file))
+                                                parent=sweep_stat_dir)
+                # pop_sweep_data_file = modpath("sweep_data_{}_{}%.hdf".format(pwdist_cutoff, min_sweep_clade_percent),
+                #                                 parent=os.path.dirname(pop_store_file))
+
+                g1000_male_dist_admix_masked_sweep_data_files[(chrom, pop, pwdist_cutoff)].append(pop_sweep_data_file)
 
         ##### 
         #         pop_store_base_name = modpath(pop_store_file, parent='', suffix='')
@@ -369,7 +375,6 @@ for pwdist_cutoff in [5e-5, 6e-5]:
 
                 dist_twice_pop_store_file = g1000_male_dist_twice_admix_masked_store_files[chrom][pop]
 
-#                g1000_male_dist_admix_masked_sweep_data_files[chrom][pop] = pop_sweep_data_file
 
         #         gwf.target_from_template('g1000_male_sweep_data_{}_{}'.format(chrom, pop), 
         #             g1000_sweep_data(pop_store_file, pop_sweep_data_file, dump_dist_twice=pop_dist_twice_file))
@@ -377,6 +382,32 @@ for pwdist_cutoff in [5e-5, 6e-5]:
                     chrom, pop, pwdist_cutoff, min_sweep_clade_percent), 
                     g1000_sweep_data(dist_twice_pop_store_file, pop_sweep_data_file, 
                                      min_sweep_clade_percent, pwdist_cutoff))
+
+
+#################################################################################
+# Use hundred sweep calls to largetst min_sweep_clade_percent that allow
+# a sweep to be called (AKA mixcalling)
+#################################################################################
+
+for (chrom, pop, pwdist_cutoff), sweep_data_files in g1000_male_dist_admix_masked_sweep_data_files.items():
+
+        sweep_data_dir = os.path.dirname(sweep_data_files[0])
+        
+        sweep_data_mixcall_file = modpath("sweep_data_mixcall_{}_{}_{}.hdf".format(chrom, pop, pwdist_cutoff),
+                                            parent=os.path.dirname(sweep_data_dir))
+
+        g = gwf.target("g1000_sweep_data_mixcalling_{}_{}_{:f}".format(chrom, pop, pwdist_cutoff),
+            inputs=sweep_data_files, 
+            outputs=[sweep_data_mixcall_file], 
+            memory='8g', walltime='1:00:00') << """
+
+            source activate simons
+            python scripts/g1000_sweep_mixcalling.py --chrom {chrom} --pop {pop} \
+                {sweep_data_inputdir} {sweep_data_outfile}
+
+        """.format(chrom=chrom, pop=pop, 
+            sweep_data_inputdir=sweep_data_dir, 
+            sweep_data_outfile=sweep_data_mixcall_file)
 
 
 #################################################################################
@@ -455,7 +486,7 @@ def hapdaf_physical(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file
     source /com/extra/vcftools/0.1.14/load.sh
     vcftools --gzvcf {vcf_file} --keep {indiv_file} --remove-indels --remove-filtered-all \
         --max-alleles 2 --recode --recode-INFO-all --stdout | python scripts/hapdaf.py \
-        --vcf stdin --ancestral {ancestral_file} --window 50000 --outfile {out_file}
+        --vcf stdin --ancestral {ancestral_file} --window 200000 --outfile {out_file}
 
     """.format(vcf_file=vcf_file, indiv_file=indiv_file, ancestral_file=ancestral_file, out_file=out_file)
     
