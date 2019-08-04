@@ -25,6 +25,41 @@ args = parser.parse_args()
 # easy loading of meta data in a consistent manner across code
 individuals, populations, regions = simons_meta_data.get_meta_data(meta_data_dir=args.meta_data_dir)
 
+
+def optimize_data_frame(df, down_int='integer'):
+    # down_int can be 'unsigned'
+    
+    converted_df = pandas.DataFrame()
+
+    floats_optim = (df
+                    .select_dtypes(include=['float'])
+                    .apply(pandas.to_numeric,downcast='float')
+                   )
+    converted_df[floats_optim.columns] = floats_optim
+
+    ints_optim = (df
+                    .select_dtypes(include=['int'])
+                    .apply(pandas.to_numeric,downcast=down_int)
+                   )
+    converted_df[ints_optim.columns] = ints_optim
+
+    for col in df.select_dtypes(include=['object']).columns:
+        num_unique_values = len(df[col].unique())
+        num_total_values = len(df[col])
+        if num_unique_values / num_total_values < 0.5:
+            converted_df[col] = df[col].astype('category')
+        else:
+            converted_df[col] = df[col]
+
+    unchanged_cols = df.columns[~df.columns.isin(converted_df.columns)]
+    converted_df[unchanged_cols] = df[unchanged_cols]
+
+    # keep columns order
+    converted_df = converted_df[df.columns]      
+            
+    return converted_df
+
+
 def read_dist_table(file_name):
 
     col_names = ['chrom', 'start', 'end', 'pop_label',
@@ -108,6 +143,9 @@ dist_data.sort_values(by=['chrom', 'region_id_1', 'indiv_1', 'start'], inplace=T
 #     store_path = args.result_dir / '{}_chr{}_100kb.store'.format(args.result_file_prefix, chrom)
 #     group.to_hdf(str(store_path), 'df',  mode='w', format="table", data_columns=['indiv_1', 'start', 'end']) # we index all data columns 
 
+dist_data = optimize_data_frame(dist_data, down_int='unsigned')
+gc.collect()
+
 dist_data.to_hdf(str(args.out_file), 'df',  mode='w', format="table", data_columns=['indiv_1', 'start', 'end']) # we index all data columns 
 
 
@@ -164,6 +202,9 @@ def dist_twice(dist_data):
 ##### apply function and write hdf
 all_male_dist_twice = dist_twice(dist_data)
 
+#all_male_dist_twice = optimize_data_frame(all_male_dist_twice, down_int='unsigned')
+all_male_dist_twice = optimize_data_frame(all_male_dist_twice, down_int='unsigned')
+gc.collect()
 
 all_male_dist_twice.to_hdf(str(args.dist_twice_out_file), 'df', 
                            data_columns=['start', 'end', 
