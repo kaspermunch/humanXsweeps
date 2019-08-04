@@ -884,7 +884,7 @@ def slim_dist_twice(dist_file, dist_twice_file):
 
 def sweep_data(dist_file, sweep_data_file, 
                min_sweep_clade_percent, pwdist_cutoff, 
-               cores=1, memory='90g', walltime='48:00:00'):
+               cores=1, memory='70g', walltime='48:00:00'):
     """
     Make and dump data frame with all distances in both directions (indiv_1, indiv2 and indiv_2, indiv_1). 
     Then calls sweeps.
@@ -932,7 +932,7 @@ def g1000_sweep_data(dist_file, sweep_data_file, min_sweep_clade_percent, pwdist
     Same as above but without adding meta data/
     """
 
-    options = {'memory': '10g',
+    options = {'memory': '8g',
                'walltime': '5:00:00',
                'cores': 1,
               } 

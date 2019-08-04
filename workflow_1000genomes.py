@@ -325,7 +325,7 @@ for chrom in autosomes + ['X']:
 
         g = gwf.target("g1000_build_dist_datasets_{}_{}".format(chrom, pop), inputs=pop_files, 
                        outputs=[pop_store_file, dist_twice_pop_store_file], 
-            memory='8g', walltime='1:00:00') << """
+            memory='2g', walltime='1:00:00') << """
 
             source activate simons
             python scripts/g1000_build_male_dist_admix_masked_datasets.py \

@@ -823,7 +823,7 @@ male_dist_twice_admix_masked_store_file = modpath(male_dist_admix_masked_store_b
 g = gwf.target("build_male_dist_admix_masked_datasets1", 
                inputs=male_admix_masked_dist_file_names, 
                outputs=[male_dist_admix_masked_store_file, male_dist_twice_admix_masked_store_file], 
-               memory='80g', walltime='11:00:00') << """
+               memory='10g', walltime='11:00:00') << """
 
     source activate simons
     python scripts/build_male_dist_admix_masked_datasets.py \
@@ -984,7 +984,7 @@ archaic_dist_store_base_name = "archaic_dist_data_chrX_{}".format(bp2str(dist_bi
 archaic_dist_store_file = modpath(archaic_dist_store_base_name, parent=archaic_dist_store_dir, suffix='.hdf')
 
 g = gwf.target("build_archaic_dist_datasets", inputs=archaic_dist_file_names, outputs=[archaic_dist_store_file], 
-    memory='80g', walltime='11:00:00') << """
+    memory='10g', walltime='11:00:00') << """
 
     source activate simons
     python scripts/build_archaic_dist_datasets.py \

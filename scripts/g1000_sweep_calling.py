@@ -47,7 +47,7 @@ import analysis_globals
 ##### Added pwdist_cutoff as argument (substituting for analysis_globals.pwdist_cutoff)
 ##### Added pwdist_cutoff as argument (substituting for analysis_globals.pwdist_cutoff)
 
-def call_rolling_windows(df, pwdist_cutoff, MIN_SWEEP_CLADE_SIZE):
+def call_rolling_windows(df, pwdist_cutoff, min_sweep_clade_size):
     """
     Takes a df with all pwdiffs in a 500kb rolling window between 
     one indiv and all other individuals. Returns all nan if one or more 100kb 
@@ -57,46 +57,49 @@ def call_rolling_windows(df, pwdist_cutoff, MIN_SWEEP_CLADE_SIZE):
     swept if this number is above cutoff. Computes mean_clade_dist as 
     mean pwdist in sweep clade.
     """
-    
-    def mean_indiv_dist(df, col):
-        """
-        Compute mean across 100kb windows in in 500kb window.
-        """
-        if len(df) != nr_wins:
-            return numpy.nan
-        return df[col].mean()
-    
-    if numpy.isnan(df.groupby('start')['dist'].mean()).any():
-        # one or more 100kb has no dist data
+
+    if len(df) == nr_wins or numpy.isnan(df.groupby('start')['dist'].mean()).any():
+        # there is not five windows or one or more 100kb has no dist data
         called, clade_size, mean_clade_dist = numpy.nan, numpy.nan, numpy.nan
     else:
         # mean distance between indiv_1 and each indiv_2 for the 500kb window
-        pwdiffs = df.groupby(['indiv_2']).apply(mean_indiv_dist, 'dist')
-
-        mean_clade_dist = pwdiffs.loc[pwdiffs <= pwdist_cutoff].mean() 
+        pwdiffs = df.groupby(['indiv_2']).dist.mean()
         
+        # mean distance within clade
+        mean_clade_dist = pwdiffs.loc[pwdiffs <= pwdist_cutoff].mean() 
+
         # number of indiv_2 closer to indiv_1 than cutoff across the 500kb window
         clade_size = (pwdiffs <= pwdist_cutoff).sum() 
-        
+
         # call if clade size is larger then cutoff
-        called = clade_size >= MIN_SWEEP_CLADE_SIZE
-    
+        called = clade_size >= min_sweep_clade_size
 
-    if numpy.isnan(df.groupby('start')['dist_af'].mean()).any():     
-        called_af, clade_size_af, mean_clade_dist_af = numpy.nan, numpy.nan, numpy.nan
+        
+    if 'dist_af' in df.columns:
+        # this is not a simulation
+        
+        if len(df) == nr_wins or numpy.isnan(df.groupby('start')['dist_af'].mean()).any():
+            # there is not five windows or one or more 100kb has no dist data
+            called_af, clade_size_af, mean_clade_dist_af = numpy.nan, numpy.nan, numpy.nan
+        else:
+            # mean distance between indiv_1 and each indiv_2 for the 500kb window
+            pwdiffs_af = df.groupby(['indiv_2']).dist_af.mean()
+
+            # mean distance within clade
+            mean_clade_dist_af = pwdiffs_af.loc[pwdiffs_af <= pwdist_cutoff].mean() 
+
+            # number of indiv_2 closer to indiv_1 than cutoff across the 500kb window
+            clade_size_af = (pwdiffs_af <= pwdist_cutoff).sum() 
+
+            # call if clade size is larger then cutoff
+            called_af = clade_size_af >= min_sweep_clade_size
+                
+        return df.copy().assign(called=called, clade_size=clade_size, mean_clade_dist=mean_clade_dist,
+                                called_af=called_af, clade_size_af=clade_size_af, mean_clade_dist_af=mean_clade_dist_af)
     else:
-        pwdiffs_af = df.groupby(['indiv_2']).apply(mean_indiv_dist, 'dist_af')
+        return df.copy().assign(called=called, clade_size=clade_size, mean_clade_dist=mean_clade_dist)
 
-        mean_clade_dist_af = pwdiffs.loc[pwdiffs_af <= pwdist_cutoff].mean() 
-
-        clade_size_af = (pwdiffs_af <= pwdist_cutoff).sum()
-
-        called_af = clade_size_af >= MIN_SWEEP_CLADE_SIZE
-
-    return df.copy().assign(called=called, clade_size=clade_size, mean_clade_dist=mean_clade_dist,
-                            called_af=called_af, clade_size_af=clade_size_af, mean_clade_dist_af=mean_clade_dist_af)
-
-
+        
 def call_swept(df):
     """
     Takes a df with all rolling window data for an indivisual for one 100kb window.
