@@ -1207,57 +1207,68 @@ hg19_map_files = reciprocal_liftover(hg38_map_files,
     target_chromosomes=target_chromosomes)
 
 
-#################################################################################
-# slim simulations
-#################################################################################
+# #################################################################################
+# # slim simulations
+# #################################################################################
 
-slim_tree_files = list()
-slim_dist_files = list()
-slim_dist_twice_files = list()
-sweep_data_mixcall_files = list()
+# slim_tree_files = list()
+# slim_dist_files = list()
+# slim_dist_twice_files = list()
+# sweep_data_mixcall_files = list()
 
-# how many to simulate:
-nr_non_africans = sum(x['Region'] != 'Africa' and x['Genetic sex assignment'] == 'XY' for x in individuals.values())
+# # how many to simulate:
+# nr_non_africans = sum(x['Region'] != 'Africa' and x['Genetic sex assignment'] == 'XY' for x in individuals.values())
 
-simulations_dir = os.path.join(mydir, 'steps', 'slim', 'simulations')
+# simulations_dir = os.path.join(mydir, 'steps', 'slim', 'simulations')
 
-slim_output_dir = simulations_dir
+# slim_output_dir = simulations_dir
 
-slim_sweep_data_dir = os.path.join(mydir, 'steps', 'slim', 'sweep_data')
-if not os.path.exists(slim_sweep_data_dir):
-     os.makedirs(slim_sweep_data_dir)
+# slim_sweep_data_dir = os.path.join(mydir, 'steps', 'slim', 'sweep_data')
+# if not os.path.exists(slim_sweep_data_dir):
+#      os.makedirs(slim_sweep_data_dir)
 
-total_sim_generations = 100000
+# total_sim_generations = 100000
 
-# pasted fro nb_25_slim_simulations notebook:
-standard_demography = \
-[(1, 20000),
- (191379, 12000),
- (194827, 6000),
- (196551, 4000),
- (197586, 3000),
- (198275, 4000),
- (198793, 6000),
- (199137, 12000),
- (199482, 20000),
- (199793, 100000)]
+# # pasted fro nb_25_slim_simulations notebook:
+# standard_demography = \
+# [(1, 20000),
+#  (191379, 12000),
+#  (194827, 6000),
+#  (196551, 4000),
+#  (197586, 3000),
+#  (198275, 4000),
+#  (198793, 6000),
+#  (199137, 12000),
+#  (199482, 20000),
+#  (199793, 100000)]
 
-# I SHOULD PRODUCE THE DEMOGRAPHIES HERE
-# IT WOULD BE NICER WITH YEARS IN THE NAMES OF FILES...
+# # pasted fro nb_25_slim_simulations notebook:
+# standard_demography_truncated = \
+# [(1, 20000),
+#  (191379, 12000),
+#  (194827, 6000),
+#  (196551, 4000),
+#  (197586, 3000),
+#  (198448, 4000)]
 
-# named autosomal population size demographies:
-demographies = [('standard', standard_demography)]
+# # I SHOULD PRODUCE THE DEMOGRAPHIES HERE
+# # IT WOULD BE NICER WITH YEARS IN THE NAMES OF FILES...
 
-# make SLiM model X chromosome
-chrom = 'X'
+# # named autosomal population size demographies:
+# demographies = [('standard', standard_demography),
+#                 ('truncated', standard_demography_truncated)]
 
-# x/autosome ratios:
-#x_auto_ratios = [0.55 * x for x in [1, 0.73]] # <- recuction below one reflects region pi vs. global pi in Africans.
-x_auto_ratios = [0.66 * x for x in [1, 0.73]]
+# # make SLiM model X chromosome
+# chrom = 'X'
 
-# mean per generation recombination rate in regions (new decode map):
-#rec_rates_per_gen = [0.465e-8 * x for x in [1, 2/4, 2/6]] # <- reductions below one reflect male/famale retios of 2 and 4
-rec_rates_per_gen = [0.465e-8, 1.16e-8]
+# # x/autosome ratios:
+# #x_auto_ratios = [0.55 * x for x in [1, 0.73]] # <- recuction below one reflects region pi vs. global pi in Africans.
+# x_auto_ratios = [0.66 * x for x in [1, 0.73]]
+
+# # mean per generation recombination rate in regions (new decode map):
+# #rec_rates_per_gen = [0.465e-8 * x for x in [1, 2/4, 2/6]] # <- reductions below one reflect male/famale retios of 2 and 4
+# rec_rates_per_gen = [0.465e-8, # mean in regions
+#                      1.16e-8]  # global for chrX
 
 # for x_auto_ratio in x_auto_ratios:
 #     for rec_rate_per_gen in rec_rates_per_gen:
@@ -1309,42 +1320,50 @@ rec_rates_per_gen = [0.465e-8, 1.16e-8]
 
 #                             sweep_data_files = list()
                                                                             
-#                             for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
-#                                 for min_sweep_clade_percent in range(0, 100, 10):
+#                             # for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
+#                             if demog_name == 'truncated':
+#                                 # require that clade has common ancestor before 10k years
+#                                 # 2 * 10000 * 0.6e-9 = 1.2e-05
+#                                 pwdist_cutoff = 1.2e-05
+                                
+#                             else:
+#                                 pwdist_cutoff = analysis_globals.pwdist_cutoff
 
-#                                     sweep_data_dir = os.path.join(slim_sweep_data_dir, 
-#                                         modpath(slim_dist_file, suffix='', parent=''),                                    
-#                                         str(pwdist_cutoff))
+#                             for min_sweep_clade_percent in range(0, 100, 10):
 
-#                                     if not os.path.exists(sweep_data_dir):
-#                                         os.makedirs(sweep_data_dir)
+#                                 sweep_data_dir = os.path.join(slim_sweep_data_dir, 
+#                                     modpath(slim_dist_file, suffix='', parent=''),                                    
+#                                     str(pwdist_cutoff))
 
-#                                     sweep_data_file = modpath("sweep_data_{}_{}%.hdf".format(pwdist_cutoff, min_sweep_clade_percent), 
-#                                                                                     parent=sweep_data_dir)                                                  
-#                                     sweep_data_files.append(sweep_data_file)
-                                                                            
-#                                     gwf.target_from_template(id_str+'_{}_{:f}_{}'.format(i,
-#                                                             pwdist_cutoff, min_sweep_clade_percent),
-#                                                             sweep_data(slim_dist_twice_file,
-#                                                                         sweep_data_file, 
-#                                                                         min_sweep_clade_percent, 
-#                                                                         pwdist_cutoff ))
+#                                 if not os.path.exists(sweep_data_dir):
+#                                     os.makedirs(sweep_data_dir)
 
-#                                 # call sweeps with mix calling for this pwdist_cutoff
-#                                 sweep_data_mixcall_file = modpath("sweep_data_mixcall_{}.hdf".format(pwdist_cutoff),
-#                                     parent=os.path.dirname(sweep_data_dir))
+#                                 sweep_data_file = modpath("sweep_data_{}_{}%.hdf".format(pwdist_cutoff, min_sweep_clade_percent), 
+#                                                                                 parent=sweep_data_dir)                                                  
+#                                 sweep_data_files.append(sweep_data_file)
+                                                                        
+#                                 gwf.target_from_template(id_str+'_{}_{:f}_{}'.format(i,
+#                                                         pwdist_cutoff, min_sweep_clade_percent),
+#                                                         sweep_data(slim_dist_twice_file,
+#                                                                     sweep_data_file, 
+#                                                                     min_sweep_clade_percent, 
+#                                                                     pwdist_cutoff ))
 
-#                                 sweep_data_mixcall_files.append(sweep_data_mixcall_file)
+#                             # call sweeps with mix calling for this pwdist_cutoff
+#                             sweep_data_mixcall_file = modpath("sweep_data_mixcall_{}.hdf".format(pwdist_cutoff),
+#                                 parent=os.path.dirname(sweep_data_dir))
 
-#                                 g = gwf.target(id_str+'_{}_{:f}'.format(i, pwdist_cutoff),
-#                                         inputs=sweep_data_files, 
-#                                         outputs=[sweep_data_mixcall_file], 
-#                                         memory='8g', walltime='1:00:00') << """
+#                             sweep_data_mixcall_files.append(sweep_data_mixcall_file)
 
-#                                     source activate simons
-#                                     python scripts/sweep_mixcalling.py {sweep_data_inputdir} {sweep_data_outfile}
+#                             g = gwf.target(id_str+'_{}_{:f}'.format(i, pwdist_cutoff),
+#                                     inputs=sweep_data_files, 
+#                                     outputs=[sweep_data_mixcall_file], 
+#                                     memory='8g', walltime='1:00:00') << """
 
-#                                 """.format(sweep_data_inputdir=sweep_data_dir, sweep_data_outfile=sweep_data_mixcall_file)
+#                                 source activate simons
+#                                 python scripts/sweep_mixcalling.py {sweep_data_inputdir} {sweep_data_outfile}
+
+#                             """.format(sweep_data_inputdir=sweep_data_dir, sweep_data_outfile=sweep_data_mixcall_file)
 
 
 #                             # IF THIS WORKS, THEN DELETE *.HDF FILES IN STEPS/SLIM/SWEEP_DATA 
@@ -1353,36 +1372,20 @@ rec_rates_per_gen = [0.465e-8, 1.16e-8]
 #                             ### NEW #####################################
 
 
-# ##################################################################################
-# # calling sweeps on slim simulations
-# #################################################################################
-
-# slim_sweep_data_dir = os.path.join(mydir, 'steps', 'slim', 'sweep_data')
-# if not os.path.exists(slim_sweep_data_dir):
-#     os.makedirs(slim_sweep_data_dir)
-
-# slim_sweep_data_files = list()
-# for i, slim_dist_file in enumerate(slim_dist_files):
-#     slim_sweep_data_file = modpath(slim_dist_file, parent=slim_sweep_data_dir)
-#     slim_sweep_data_files.append(slim_sweep_data_file)
-#     gwf.target_from_template('slim_sweep_data_{}'.format(i), sweep_data(slim_dist_file, slim_sweep_data_file, 
-#                                                                         cores=1, memory='8g', walltime='00:30:00'))
-
-
 # #################################################################################
 # # compute prop swept for all slim sweep data in a file that includes simulation info
 # #################################################################################
 
-slim_summary_file = os.path.join(mydir, 'steps', 'slim', 'slim_summary.hdf')
+# slim_summary_file = os.path.join(mydir, 'steps', 'slim', 'slim_summary.hdf')
 
-g = gwf.target("slim_summary", 
-    inputs=sweep_data_mixcall_files, outputs=[slim_summary_file], 
-    memory='10g', walltime='00:30:00') << """
+# g = gwf.target("slim_summary", 
+#     inputs=sweep_data_mixcall_files, outputs=[slim_summary_file], 
+#     memory='10g', walltime='00:30:00') << """
 
-    source activate simons
-    python scripts/slim_summary.py {slim_sweep_data_dir} {out_file}
+#     source activate simons
+#     python scripts/slim_summary.py {slim_sweep_data_dir} {out_file}
 
-""".format(slim_sweep_data_dir=slim_sweep_data_dir, out_file=slim_summary_file)
+# """.format(slim_sweep_data_dir=slim_sweep_data_dir, out_file=slim_summary_file)
 
 
 # #################################################################################
