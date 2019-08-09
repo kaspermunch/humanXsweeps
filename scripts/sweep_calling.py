@@ -64,10 +64,13 @@ def call_rolling_windows(df, pwdist_cutoff, min_sweep_clade_size):
             # call if clade size is larger then cutoff
             called_af = clade_size_af >= min_sweep_clade_size
                 
-        return df.copy().assign(called=called, clade_size=clade_size, mean_clade_dist=mean_clade_dist,
+        return df[['indiv_1', 'start', 'off', 'dist', 'dist_af']].assign(called=called, clade_size=clade_size, mean_clade_dist=mean_clade_dist,
                                 called_af=called_af, clade_size_af=clade_size_af, mean_clade_dist_af=mean_clade_dist_af)
+        # # Try to also downcast off
+        # _df['off'] = pandas.to_numeric(_df.off, downcast='unsigned')
+        # return _df
     else:
-        return df.copy().assign(called=called, clade_size=clade_size, mean_clade_dist=mean_clade_dist)
+        return df[['indiv_1', 'start', 'off', 'dist']].assign(called=called, clade_size=clade_size, mean_clade_dist=mean_clade_dist) 
 
 
 def call_swept(df):
@@ -152,19 +155,38 @@ nr_indiv = all_male_dist_twice.indiv_1.unique().size
 
 MIN_SWEEP_CLADE_SIZE = round(nr_indiv * args.min_sweep_clade_percent / 100)
 
+# partial version of window_stats
+import functools
+window_stats = functools.partial(_window_stats, pwdist_cutoff=args.pwdist_cutoff, min_sweep_clade_size=MIN_SWEEP_CLADE_SIZE)
+
+# merge window sweep info with distance data
+if 'dist_af' in all_male_dist_twice.columns:
+    # this is not a simulation
+    gr_cols = ['indiv_1', 'start', 'end', 'pop_1', 'region_label_1', 'region_id_1', 'region_1']
+else:
+    gr_cols = ['indiv_1', 'start', 'end']
+stats_data = (all_male_dist_twice
+        .groupby(gr_cols)
+        .apply(window_stats)
+        .reset_index(level=gr_cols)
+        )
+
 lst = list()
 # loop over five offsets of 500kb windows
 for off in offsets:
     groups = (all_male_dist_twice
                 .assign(off=off, # keep offset
                         roll_win = lambda df: (off + df.start) // window_size) # label for rolling 500kb window
-                .groupby(['indiv_1', 'roll_win', 'off'])
+                .groupby(['indiv_1', 'roll_win', 'off'], as_index=False)
                 )
     # with Pool(nr_cpu) as p:
     #     df = pandas.concat(p.map(call_rolling_windows, [group for name, group in groups]))
     ##### added pwdist arg to function call
 
     lst.append(groups.apply(call_rolling_windows, args.pwdist_cutoff, MIN_SWEEP_CLADE_SIZE))
+
+del all_male_dist_twice
+gc.collect()
 
 # concatenate data frames for each offset and call windows as swept
 sweep_calls = (pandas.concat(lst)
@@ -176,25 +198,9 @@ sweep_calls = (pandas.concat(lst)
 del lst[:]
 gc.collect()
 
-##### partial version of window_stats
-import functools
-window_stats = functools.partial(_window_stats, pwdist_cutoff=args.pwdist_cutoff, min_sweep_clade_size=MIN_SWEEP_CLADE_SIZE)
+sweep_data = stats_data.merge(sweep_calls, on=['indiv_1', 'start'])
 
-# merge window sweep info with distance data
-if 'dist_af' in all_male_dist_twice.columns:
-    # this is not a simulation
-    gr_cols = ['indiv_1', 'start', 'end', 'pop_1', 'region_label_1', 'region_id_1', 'region_1']
-else:
-    gr_cols = ['indiv_1', 'start', 'end']
-df = (all_male_dist_twice
-        .groupby(gr_cols)
-        .apply(window_stats)
-        .reset_index(level=gr_cols)
-        )
-sweep_data = df.merge(sweep_calls, on=['indiv_1', 'start'])
-
-del df
-del all_male_dist_twice
+del stats_data
 del sweep_calls
 gc.collect()
 
