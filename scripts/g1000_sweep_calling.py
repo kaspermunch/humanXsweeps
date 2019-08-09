@@ -7,6 +7,8 @@ from multiprocessing import Pool, cpu_count
 
 import hg19_chrom_sizes
 
+import gc
+
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, script_dir + '/../notebooks')
 import analysis_globals
@@ -171,13 +173,25 @@ nr_indiv = all_male_dist_twice.indiv_1.unique().size
 ##### defining MIN_SWEEP_CLADE_SIZE using arg to script
 MIN_SWEEP_CLADE_SIZE = round(nr_indiv * args.min_sweep_clade_percent / 100)
 
+# partial version of window_stats
+import functools
+window_stats = functools.partial(_window_stats, pwdist_cutoff=args.pwdist_cutoff, MIN_SWEEP_CLADE_SIZE=MIN_SWEEP_CLADE_SIZE)
+
+# merge window sweep info with distance data
+gr_cols = ['indiv_1', 'start', 'end']
+stats_data = (all_male_dist_twice
+        .groupby(gr_cols)
+        .apply(window_stats)
+        .reset_index(level=gr_cols)
+        )
+
 lst = list()
 # loop over five offsets of 500kb windows
 for off in offsets:
     groups = (all_male_dist_twice
                 .assign(off=off, # keep offset
                         roll_win = lambda df: (off + df.start) // window_size) # label for rolling 500kb window
-                .groupby(['indiv_1', 'roll_win', 'off'])
+                .groupby(['indiv_1', 'roll_win', 'off'], as_index=False)
                 )
     # with Pool(nr_cpu) as p:
     #     df = pandas.concat(p.map(call_rolling_windows, [group for name, group in groups]))
@@ -185,6 +199,9 @@ for off in offsets:
     df = pandas.concat([call_rolling_windows(group, args.pwdist_cutoff, MIN_SWEEP_CLADE_SIZE) for name, group in groups])
 
     lst.append(df)
+    
+del all_male_dist_twice
+gc.collect()
 
 # concatenate data frames for each offset and call windows as swept
 sweep_calls = (pandas.concat(lst)
@@ -193,18 +210,7 @@ sweep_calls = (pandas.concat(lst)
                 .reset_index(level=['indiv_1', 'start'])
                 )
 
-##### partial version of window_stats
-import functools
-window_stats = functools.partial(_window_stats, pwdist_cutoff=args.pwdist_cutoff, MIN_SWEEP_CLADE_SIZE=MIN_SWEEP_CLADE_SIZE)
-
-# merge window sweep info with distance data
-gr_cols = ['indiv_1', 'start', 'end']
-df = (all_male_dist_twice
-        .groupby(gr_cols)
-        .apply(window_stats)
-        .reset_index(level=gr_cols)
-        )
-sweep_data = df.merge(sweep_calls, on=['indiv_1', 'start'])
+sweep_data = stats_data.merge(sweep_calls, on=['indiv_1', 'start'])
 
 
 # get run length of swept windows and call windows as part of sweeps (ECH haplotypes)
