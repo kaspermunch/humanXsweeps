@@ -350,12 +350,12 @@ for chrom in autosomes + ['X']:
 
     for pop, pop_store_file in g1000_male_dist_admix_masked_store_files[chrom].items():
 
-        ##############################
-        if pop not in ['CHB']:
-            continue
-        #############################
+        # ##############################
+        # if pop not in ['CHB', 'YRI']:
+        #     continue
+        # #############################
 
-        for pwdist_cutoff in [5e-5, 6e-5]:
+        for pwdist_cutoff in [5e-5]:
 
             for min_sweep_clade_percent in range(0, 100, 1):
 
