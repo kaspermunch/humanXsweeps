@@ -130,7 +130,8 @@ g = gwf.target("trim_ust_ishim", inputs=[ust_ishim_sample_file, ust_ishim_mask_f
                       outputs=[trimmed_ust_ishim_sample_file, trimmed_ust_ishim_mask_file], 
                       memory='15g', walltime='11:00:00') << """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/trim_ust_ishim.py {} {} {} {}
 
 """.format(ust_ishim_sample_file, ust_ishim_mask_file, trimmed_ust_ishim_sample_file, trimmed_ust_ishim_mask_file)
@@ -158,7 +159,7 @@ gwf.target_from_template("pad_denisova_mask", pad_archaic_files(template_file=te
 #                       outputs=[padded_altai_sample_file, padded_altai_mask_file], 
 #                       memory='15g', walltime='11:00:00') << """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/pad_archaic_genome.py {template} {input_seq} N {output_seq}
 #     python scripts/pad_archaic_genome.py {template} {input_mask} 0 {output_mask}
 
@@ -413,7 +414,8 @@ pi_store_files = [modpath(x, parent=pi_store_dir, suffix='.store') for x in pi_s
 g = gwf.target("build_pi_datasets", inputs=pi_file_names, outputs=pi_store_files, 
     memory='60g', walltime='11:00:00') << """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/build_pi_datasets.py \
         --pi-dir {pi_dir} \
         --result-dir {pi_store_dir} \
@@ -439,7 +441,8 @@ dist_store_files = [modpath(x, parent=dist_store_dir, suffix='.store') for x in 
 g = gwf.target("build_dist_datasets", inputs=dist_file_names, outputs=dist_store_files, 
     memory='150g', walltime='11:00:00') << """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/build_dist_datasets.py \
         --dist-dir {dist_dir} \
         --result-dir {dist_store_dir} \
@@ -735,7 +738,7 @@ for file1, file2 in itertools.combinations(sorted(admix_masked_male_x_haploids),
 # g = gwf.target("build_male_dist_datasets1", inputs=male_dist_file_names, outputs=[male_dist_store_file], 
 #     memory='80g', walltime='11:00:00') << """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/build_male_dist_datasets.py \
 #         --dist-dir {dist_dir} \
 #         --meta-data-dir {metadata_dir} \
@@ -767,7 +770,7 @@ for file1, file2 in itertools.combinations(sorted(admix_masked_male_x_haploids),
 # g = gwf.target("build_male_dist_datasets2", inputs=male_ampl_masked_dist_file_names, outputs=[male_dist_ampl_masked_store_file], 
 #     memory='80g', walltime='11:00:00') << """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/build_male_dist_datasets.py \
 #         --dist-dir {dist_dir} \
 #         --meta-data-dir {metadata_dir} \
@@ -800,7 +803,7 @@ for file1, file2 in itertools.combinations(sorted(admix_masked_male_x_haploids),
 # g = gwf.target("build_male_dist_admix_masked_datasets1", inputs=male_admix_masked_dist_file_names, outputs=[male_dist_admix_masked_store_file], 
 #     memory='80g', walltime='11:00:00') << """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/build_male_dist_admix_masked_datasets.py \
 #         --dist-dir {dist_dir} \
 #         --meta-data-dir {metadata_dir} \
@@ -823,9 +826,10 @@ male_dist_twice_admix_masked_store_file = modpath(male_dist_admix_masked_store_b
 g = gwf.target("build_male_dist_admix_masked_datasets1", 
                inputs=male_admix_masked_dist_file_names, 
                outputs=[male_dist_admix_masked_store_file, male_dist_twice_admix_masked_store_file], 
-               memory='10g', walltime='11:00:00') << """
+               memory='16g', walltime='11:00:00') << """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/build_male_dist_admix_masked_datasets.py \
         --dist-dir {dist_dir} \
         --meta-data-dir {metadata_dir} \
@@ -835,7 +839,36 @@ g = gwf.target("build_male_dist_admix_masked_datasets1",
 """.format(dist_dir=male_admix_masked_dist_dir, out_file=male_dist_admix_masked_store_file, metadata_dir=metadata_dir,
           dist_twice_out_file=male_dist_twice_admix_masked_store_file)
                                                   
-                                                  
+
+#################################################################################
+# Same but including Ust Ishim:
+# Also adjusts distances to ust ishim by adding distance corresponding to 45000 years
+#################################################################################
+male_dist_admix_masked_store_base_name_with_ust_ishim = "male_dist_data_with_ust_ishim_chrX_{}".format(bp2str(dist_binsize))
+male_dist_admix_masked_store_file_with_ust_ishim = modpath(male_dist_admix_masked_store_base_name_with_ust_ishim, parent=male_dist_admix_masked_store_dir, suffix='.hdf')
+
+male_dist_twice_admix_masked_store_file_with_ust_ishim = modpath(male_dist_admix_masked_store_base_name_with_ust_ishim + '_twice',
+     parent=os.path.dirname(male_dist_admix_masked_store_file_with_ust_ishim), suffix='.hdf')
+
+g = gwf.target("build_male_dist_admix_masked_datasets_with_ust_ishim", 
+               inputs=male_admix_masked_dist_file_names, 
+               outputs=[male_dist_admix_masked_store_file_with_ust_ishim, male_dist_twice_admix_masked_store_file_with_ust_ishim], 
+               memory='16g', walltime='11:00:00') << """
+
+    source ./scripts/conda_init.sh
+    conda activate simons
+    python scripts/build_male_dist_admix_masked_datasets.py \
+        --dist-dir {dist_dir} \
+        --meta-data-dir {metadata_dir} \
+        --out-file {out_file} \
+        --dist-twice-out-file {dist_twice_out_file} \
+        --include-ust-ishim
+
+""".format(dist_dir=male_admix_masked_dist_dir, out_file=male_dist_admix_masked_store_file_with_ust_ishim, metadata_dir=metadata_dir,
+          dist_twice_out_file=male_dist_twice_admix_masked_store_file_with_ust_ishim)
+
+
+
 ########## NEW VERSION ########################
 
 
@@ -883,28 +916,78 @@ for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
 ########## NEW VERSION ########################
 
 
+#################################################################################
+# Call sweeps on the distance data with given pwdist_cutoff and min_sweep_clade_size
+#################################################################################
+
+male_dist_admix_masked_clique_data_files = defaultdict(list)
+                                                 
+for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
+    for min_sweep_clade_percent in range(0, 100+5, 5):
+
+        sweep_stat_dir = os.path.join(male_dist_admix_masked_store_dir, str(pwdist_cutoff))
+        if not os.path.exists(sweep_stat_dir):
+            os.makedirs(sweep_stat_dir)
+            
+        male_dist_admix_masked_clique_data_file = modpath("clique_data_{}_{}%.hdf".format(pwdist_cutoff, min_sweep_clade_percent), 
+                                                         parent=sweep_stat_dir)                                                  
+        male_dist_admix_masked_clique_data_files[pwdist_cutoff].append(male_dist_admix_masked_clique_data_file)
+                                                  
+        gwf.target_from_template('male_dist_admix_masked_clique_data_{:f}_{}'.format(
+                                 pwdist_cutoff, min_sweep_clade_percent),
+                                 clique_data(male_dist_twice_admix_masked_store_file,
+                                            male_dist_admix_masked_clique_data_file, 
+                                            min_sweep_clade_percent, 
+                                            pwdist_cutoff ))
+
+#################################################################################
+# Same but including Ust Ishim (for calling ECH in Ust Ishim)
+#################################################################################
+
+male_dist_admix_masked_clique_data_files_with_ust_ishim = defaultdict(list)
+                                                 
+for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
+    for min_sweep_clade_percent in range(0, 100+5, 5):
+
+        sweep_stat_dir = os.path.join(male_dist_admix_masked_store_dir, str(pwdist_cutoff))
+        if not os.path.exists(sweep_stat_dir):
+            os.makedirs(sweep_stat_dir)
+            
+        male_dist_admix_masked_clique_data_file_with_ust_ishim = modpath("clique_data_with_ust_ishim_{}_{}%.hdf".format(pwdist_cutoff, min_sweep_clade_percent), 
+                                                         parent=sweep_stat_dir)                                                  
+        male_dist_admix_masked_clique_data_files_with_ust_ishim[pwdist_cutoff].append(male_dist_admix_masked_clique_data_file_with_ust_ishim)
+                                                  
+        gwf.target_from_template('male_dist_admix_masked_clique_data_with_ust_ishim_{:f}_{}'.format(
+                                 pwdist_cutoff, min_sweep_clade_percent),
+                                 clique_data(male_dist_twice_admix_masked_store_file_with_ust_ishim,
+                                            male_dist_admix_masked_clique_data_file_with_ust_ishim, 
+                                            min_sweep_clade_percent, 
+                                            pwdist_cutoff ))
 
 #################################################################################
 # Use hundred sweep calls to largetst min_sweep_clade_percent that allow
 # a sweep to be called (AKA mixcalling)
 #################################################################################
 
-for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
+# # NOTE: abandoned mixcalling. I realized that it does not report cliques.
 
-    sweep_data_dir = os.path.dirname(male_dist_admix_masked_sweep_data_files[pwdist_cutoff][0])
+# for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
 
-    sweep_data_mixcall_file = modpath("sweep_data_mixcall_{}.hdf".format(pwdist_cutoff),
-        parent=os.path.dirname(sweep_data_dir))
+#     sweep_data_dir = os.path.dirname(male_dist_admix_masked_sweep_data_files[pwdist_cutoff][0])
 
-    g = gwf.target("sweep_data_mixcalling_{:f}".format(pwdist_cutoff),
-            inputs=male_dist_admix_masked_sweep_data_files[pwdist_cutoff], 
-            outputs=[sweep_data_mixcall_file], 
-            memory='8g', walltime='1:00:00') << """
+#     sweep_data_mixcall_file = modpath("sweep_data_mixcall_{}.hdf".format(pwdist_cutoff),
+#         parent=os.path.dirname(sweep_data_dir))
 
-        source activate simons
-        python scripts/sweep_mixcalling.py {sweep_data_inputdir} {sweep_data_outfile}
+#     g = gwf.target("sweep_data_mixcalling_{:f}".format(pwdist_cutoff),
+#             inputs=male_dist_admix_masked_sweep_data_files[pwdist_cutoff], 
+#             outputs=[sweep_data_mixcall_file], 
+#             memory='30g', walltime='1:00:00') << """
 
-    """.format(sweep_data_inputdir=sweep_data_dir, sweep_data_outfile=sweep_data_mixcall_file)
+#         source ./scripts/conda_init.sh
+#         conda activate simons
+#         python scripts/sweep_mixcalling.py {sweep_data_inputdir} {sweep_data_outfile}
+
+#     """.format(sweep_data_inputdir=sweep_data_dir, sweep_data_outfile=sweep_data_mixcall_file)
 
 
 # #################################################################################
@@ -923,7 +1006,7 @@ for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
 # g = gwf.target("build_male_dist_admix_masked_datasets2", inputs=male_ampl_and_admix_masked_dist_file_names, outputs=[male_dist_ampl_and_admix_masked_store_file], 
 #     memory='80g', walltime='11:00:00') << """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/build_male_dist_admix_masked_datasets.py \
 #         --dist-dir {dist_dir} \
 #         --meta-data-dir {metadata_dir} \
@@ -986,7 +1069,8 @@ archaic_dist_store_file = modpath(archaic_dist_store_base_name, parent=archaic_d
 g = gwf.target("build_archaic_dist_datasets", inputs=archaic_dist_file_names, outputs=[archaic_dist_store_file], 
     memory='10g', walltime='11:00:00') << """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/build_archaic_dist_datasets.py \
         --dist-dir {dist_dir} \
         --meta-data-dir {metadata_dir} \
@@ -1278,8 +1362,14 @@ hg19_map_files = reciprocal_liftover(hg38_map_files,
 #         xreduction = x_auto_ratio / 0.75
         
 #         for demog_name, demog in demographies:
+
+#             # slim templates
 #             for sweep_type in ['nosweep']: #['complete', 'partial', 'nosweep']:
+
+#                 # start of sweep
 #                 for sweep_start in [198275]: #[198965, 198275, 197586, 196551]: # pasted fro nb_25_slim_simulations notebook
+
+#                     # selection coeficient (if not 'nosweep' slim template)
 #                     for selcoef in [0.1]: #[0.01, 0.05, 0.1, 0.2]: 
 
 #                         id_str = '{}_{}_{}_{}_{}_{}_{}'.format(demog_name,
@@ -1289,6 +1379,7 @@ hg19_map_files = reciprocal_liftover(hg38_map_files,
 #                         slim_output_dir = os.path.join(simulations_dir, id_str.replace('_', '/'))
 #                         if not os.path.exists(slim_output_dir): os.makedirs(slim_output_dir)
 
+#                         # replicates
 #                         for i in range(15):
 #                             sim_output_prefix = os.path.join(slim_output_dir, "{}_{}".format(id_str, i))
 #                             slim_tree_file = sim_output_prefix + '.trees'
@@ -1322,12 +1413,14 @@ hg19_map_files = reciprocal_liftover(hg38_map_files,
                                                                             
 #                             # for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
 #                             if demog_name == 'truncated':
+#                                 # HACK to set pairwise distance for use with truncated simulations:
 #                                 # require that clade has common ancestor before 10k years
 #                                 # 2 * 10000 * 0.6e-9 = 1.2e-05
 #                                 pwdist_cutoff = 1.2e-05
                                 
 #                             else:
 #                                 pwdist_cutoff = analysis_globals.pwdist_cutoff
+
 
 #                             for min_sweep_clade_percent in range(0, 100, 10):
 
@@ -1360,7 +1453,7 @@ hg19_map_files = reciprocal_liftover(hg38_map_files,
 #                                     outputs=[sweep_data_mixcall_file], 
 #                                     memory='8g', walltime='1:00:00') << """
 
-#                                 source activate simons
+#                                 conda activate simons
 #                                 python scripts/sweep_mixcalling.py {sweep_data_inputdir} {sweep_data_outfile}
 
 #                             """.format(sweep_data_inputdir=sweep_data_dir, sweep_data_outfile=sweep_data_mixcall_file)
@@ -1382,7 +1475,7 @@ hg19_map_files = reciprocal_liftover(hg38_map_files,
 #     inputs=sweep_data_mixcall_files, outputs=[slim_summary_file], 
 #     memory='10g', walltime='00:30:00') << """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/slim_summary.py {slim_sweep_data_dir} {out_file}
 
 # """.format(slim_sweep_data_dir=slim_sweep_data_dir, out_file=slim_summary_file)

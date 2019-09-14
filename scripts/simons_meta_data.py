@@ -53,7 +53,7 @@ excluded_populations = ['Masai', 'Somali', # show some non-African component in 
 # read in meta data to get sex of each individual
 ###########################################################
 
-def get_meta_data(meta_data_dir=None):
+def get_meta_data(meta_data_dir=None, include_ust_ishim=False):
 
     if meta_data_dir is not None:
         d = meta_data_dir
@@ -78,6 +78,15 @@ def get_meta_data(meta_data_dir=None):
                     d['Longitude'] = numpy.nan
                     d['Latitude'] =  numpy.nan
                 meta_data[sample_id] = d
+
+    if include_ust_ishim:
+        d = dict()
+        d['Longitude'] = 71.167194
+        d['Latitude'] = 57.692596
+        d['Population ID'] = 'Ust_Ishim'
+        d['Region'] = 'Ust_Ishim'
+        d['Genetic sex assignment'] = 'XY'
+        meta_data['Ust_Ishim'] = d
 
     # dicts of samples from each population and region
     populations = defaultdict(list)

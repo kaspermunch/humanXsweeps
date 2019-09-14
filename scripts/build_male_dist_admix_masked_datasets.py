@@ -5,6 +5,7 @@ import argparse
 import pickle
 import pandas
 from pandas import DataFrame, Series
+import numpy as np
 
 import simons_meta_data
 from hg19_chrom_sizes import hg19_chrom_sizes as chromosome_lengths
@@ -18,12 +19,15 @@ parser.add_argument("--dist-dir", dest="dist_dir", type=Path)
 parser.add_argument("--meta-data-dir", dest="meta_data_dir", type=Path)
 parser.add_argument("--out-file", dest="out_file", type=Path)
 parser.add_argument("--dist-twice-out-file", dest="dist_twice_out_file", type=Path)
+parser.add_argument("--include-ust-ishim", dest="include_ust_ishim", action='store_true', default=False)
 # parser.add_argument("--result-dir", dest="result_dir", type=Path)
 # parser.add_argument("--result-file-prefix", dest="result_file_prefix", type=str, default='dist_data')
 args = parser.parse_args()
 
 # easy loading of meta data in a consistent manner across code
-individuals, populations, regions = simons_meta_data.get_meta_data(meta_data_dir=args.meta_data_dir)
+individuals, populations, regions = simons_meta_data.get_meta_data(
+    meta_data_dir=args.meta_data_dir,
+    include_ust_ishim=args.include_ust_ishim)
 
 
 def optimize_data_frame(df, down_int='integer'):
@@ -70,8 +74,8 @@ def read_dist_table(file_name):
     with open(str(file_name), 'rb') as f:
         table = pickle.load(f)
     df = DataFrame(table, columns=col_names)
-    df.indiv1 = [Path(x).name for x in df.indiv_1]
-    df.indiv2 = [Path(x).name for x in df.indiv_2]
+    df['indiv1'] = [Path(x).name for x in df.indiv_1]
+    df['indiv2'] = [Path(x).name for x in df.indiv_2]
     return df
 
 def indiv_filter(df):
@@ -109,6 +113,15 @@ def swap_indiv_to_put_non_african_first(s1, s2):
             l.append((indiv1, indiv2))
     return l
 
+
+# correct for branch shortening of Ust Ishim individual:
+if args.include_ust_ishim:
+    correction = analysis_globals.mut_per_year * 45000
+    dist_data.loc[dist_data.indiv_1 == 'Ust_Ishim', 'dist'] += correction
+    dist_data.loc[dist_data.indiv_2 == 'Ust_Ishim', 'dist'] += correction
+
+
+# swap indivs to put non-African first:
 dist_data['indiv_1'], dist_data['indiv_2'] = zip(*swap_indiv_to_put_non_african_first(dist_data['indiv_1'], dist_data['indiv_2']))
 
 
@@ -120,7 +133,8 @@ dist_data['region_label_2'] = [individuals[x]['Region'] for x in dist_data.indiv
 
 # map regions to integers
 region_id = {'Africa': 0, 'WestEurasia': 1, 'SouthAsia': 2,
-             'CentralAsiaSiberia': 3, 'Oceania': 4, 'EastAsia': 5, 'America':6}
+             'CentralAsiaSiberia': 3, 'Oceania': 4, 'EastAsia': 5, 'America':6,
+             'Ust_Ishim': 7}
 dist_data['region_id_1'] = [region_id[x] for x in dist_data.region_label_1]
 dist_data['region_id_2'] = [region_id[x] for x in dist_data.region_label_2]
 
@@ -154,7 +168,8 @@ dist_data.to_hdf(str(args.out_file), 'df',  mode='w', format="table", data_colum
 
 def dist_twice(dist_data):
 
-    individuals, populations, regions = simons_meta_data.get_meta_data(meta_data_dir=analysis_globals.meta_data_dir)
+    #we use the global individuals defined above...
+    #individuals, populations, regions = simons_meta_data.get_meta_data(meta_data_dir=analysis_globals.meta_data_dir)
 
     if 'dist_af' in dist_data.columns:
         # this is not a simulation
