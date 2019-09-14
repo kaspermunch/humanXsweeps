@@ -6,8 +6,6 @@ import argparse
 from multiprocessing import Pool, cpu_count
 
 import gc
-import psutil
-process = psutil.Process(os.getpid())
 
 import simons_meta_data
 import hg19_chrom_sizes
