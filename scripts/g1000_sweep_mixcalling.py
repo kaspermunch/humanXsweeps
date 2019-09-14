@@ -31,9 +31,10 @@ df = pd.concat(df_list)
 
 def get_best_sweep_call(grp):
 
-    if grp.swept.sum():
+    df = grp.loc[grp.swept == True]
+    if len(df):
         # extract the call with the largets min clade size
-        return grp.loc[(grp.swept == True) & (grp.clade_cut == grp.clade_cut.max())]
+        return grp.loc[grp.clade_cut == df.clade_cut.max()]
     else:
         # if no sweeps are calle for any clade size, we use the extract calls for the smallest min clade size
         return grp.loc[grp.clade_cut == grp.clade_cut.min()]
