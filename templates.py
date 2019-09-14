@@ -60,7 +60,8 @@ def bed_difference(bed_file1, bed_file2, output_file):
                }
     shell_spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python ./scripts/liftover_diff.py {bed_file1} {bed_file2} | sort -k1,1 -k2,2n -k3,3n > {output_file}
 
     """.format(bed_file1=bed_file1, bed_file2=bed_file2, output_file=output_file)
@@ -102,7 +103,8 @@ def liftover(bed_file, chain_file, mapped_file, unmapped_file):
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     liftOver -bedPlus=3 {bed_file} {chain_file} {mapped_file} {unmapped_file}
 
     """.format(bed_file=bed_file, chain_file=chain_file, mapped_file=mapped_file, unmapped_file=unmapped_file)
@@ -126,7 +128,8 @@ def vcf2haplo(vcf_file, sample_id, masked_ref, out_file1, haploid=False, out_fil
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     source /com/extra/vcftools/0.1.14/load.sh
     vcftools --gzvcf {vcf_file} --remove-indels --remove-filtered-all --max-alleles 2 \
         --recode --recode-INFO-all --indv {sample_id} --stdout | \
@@ -156,7 +159,8 @@ def pad_archaic_files(template_file, input_file, pad_char, output_file):
               }
 
     spec = """
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/pad_archaic_genome.py {template} {input} {pad_char} {output}
 
     """.format(template=template_file, input=input_file, pad_char=pad_char, output=output_file)
@@ -168,7 +172,7 @@ def pad_archaic_files(template_file, input_file, pad_char, output_file):
 #                           memory='4g',
 #                           walltime='11:00:00') << """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/mask_sample.py {mask_level} {unmasked_file} {mask_file} {masked_file}
 
 #     """
@@ -184,7 +188,8 @@ def mask_sample(unmasked_file, mask_file, mask_level, masked_file, skip=[]):
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/mask_sample.py {skipped} --mask-level {mask_level} {unmasked_file} {mask_file} {masked_file}
 
     """.format(mask_file=mask_file, unmasked_file=unmasked_file, 
@@ -199,7 +204,7 @@ def mask_sample(unmasked_file, mask_file, mask_level, masked_file, skip=[]):
 #                           memory='15g',
 #                           walltime='11:00:00') << """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/pseudohaploids.py {input_file} {ref_file_name} {output_file1} {output_file2}
 
 #     """
@@ -212,7 +217,8 @@ def pseudohaploids(input_file, ref_file_name, output_file1, output_file2):
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/pseudohaploids.py {input_file} {ref_file_name} {output_file1} {output_file2}
 
     """.format(input_file=input_file, ref_file_name=ref_file_name, 
@@ -233,7 +239,7 @@ def pseudohaploids(input_file, ref_file_name, output_file1, output_file2):
 
 #     shell_spec = '''
 
-#         source activate simons
+#         conda activate simons
 #         python scripts/pi_windows.py {args}
 
 #     '''.format(args=' '.join(map(str, args)))
@@ -250,7 +256,8 @@ def pi_for_pair_template(*args):
 
     spec = '''
 
-        source activate simons
+        source ./scripts/conda_init.sh
+    conda activate simons
         python scripts/pi_windows.py {args}
 
     '''.format(args=' '.join(map(str, args)))
@@ -271,7 +278,8 @@ def dist_for_x_pair_template(*args):
 
     spec = '''
 
-        source activate simons
+        source ./scripts/conda_init.sh
+    conda activate simons
         python scripts/x_diff_windows.py {args}
 
     '''.format(args=' '.join(map(str, args)))
@@ -292,7 +300,8 @@ def admix_masked_dist_for_x_pair_template(*args):
 
     spec = '''
 
-        source activate simons
+        source ./scripts/conda_init.sh
+    conda activate simons
         python scripts/x_admix_masked_diff_windows.py {args}
 
     '''.format(args=' '.join(map(str, args)))
@@ -313,7 +322,8 @@ def admix_masked_dist_for_pair_template(*args):
 
     spec = '''
 
-        source activate simons
+        source ./scripts/conda_init.sh
+    conda activate simons
         python scripts/admix_masked_diff_windows.py {args}
 
     '''.format(args=' '.join(map(str, args)))
@@ -330,7 +340,7 @@ def admix_masked_dist_for_pair_template(*args):
 
 #     spec = '''
 
-#         source activate simons
+#         conda activate simons
 #         cat {fasta_file} | gzip -d > {copied_fasta_file}
 #         python scripts/index_fasta.py {copied_fasta_file}
 
@@ -347,7 +357,7 @@ def admix_masked_dist_for_pair_template(*args):
 
 #     spec = '''
 
-#         source activate simons
+#         conda activate simons
 #         python scripts/dist_matrix.py --output {output_file} {fasta_files}
 
 #     '''.format(output_file=output_file, ' '.join(fasta_files))
@@ -359,7 +369,7 @@ def admix_masked_dist_for_pair_template(*args):
 # # argweaver: simulate args
 # simulate_sites = template(inputs=[], outputs=['{output_prefix}.sites']) << """
 
-#     source activate argweaver
+#     conda activate argweaver
 #     arg-sim --model=coal_recomb -k 100 -L 1000000 -N 10000 -r 1.6e-8 -m 1.8e-8 -o {output_prefix}
 
 #     """
@@ -368,7 +378,7 @@ def admix_masked_dist_for_pair_template(*args):
 # extract_male_x = template(inputs=['{full_genome}'], outputs=['{only_x}'], 
 #     memory='10g') << """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/extract_male_x.py {full_genome} {only_x}
 
 #     """
@@ -379,7 +389,8 @@ def extract_x(full_genome, only_x):
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/extract_x.py {full_genome} {only_x}
 
     """.format(full_genome=full_genome, only_x=only_x)
@@ -393,7 +404,8 @@ def mask_ampliconic_regions(unmasked_file, masked_file, ampl_regions_file):
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/mask_ampl_regions.py {ampl_regions_file} {unmasked_file} {masked_file}
 
     """.format(unmasked_file=str(unmasked_file), masked_file=str(masked_file),
@@ -408,7 +420,8 @@ def admix_mask(unmasked_file, masked_file, admix_pred_file, min_post_prob):
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/admix_mask.py {admix_pred_file} {min_post_prob} {unmasked_file} {masked_file}
 
     """.format(admix_pred_file=admix_pred_file, min_post_prob=min_post_prob,
@@ -427,7 +440,7 @@ def admix_mask(unmasked_file, masked_file, admix_pred_file, min_post_prob):
 
 #     shell_spec = """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/generate_argweaver_input.py \
 #         -w {argweaver_binsize} -o {argweaver_input_dir} {male_x_files}
 
@@ -447,7 +460,8 @@ def fasta_alignments(male_x_file_names, argweaver_input_files,
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/generate_argweaver_input.py \
         -w {argweaver_binsize} -o {argweaver_input_dir} {male_x_files}
 
@@ -469,7 +483,8 @@ def argeaver_window_analysis(input_fasta_file, output_file):
 
     JOBDIR=/scratch/$GWF_JOBID
 
-    source activate argweaver
+    source ./scripts/conda_init.sh
+    conda activate argweaver
 
     for CHAIN in 1 2; do
 
@@ -508,8 +523,8 @@ def argeaver_window_analysis(input_fasta_file, output_file):
     ALLSTATSFILES=($JOBDIR/*.$ITERATIONS.smc.stats)
     NRSTATSFILES=${{#ALLSTATSFILES[@]}}
     if [ $NRSTATSFILES -eq 2 ]; then
-        source deactivate
-        source activate simons
+        source ./scripts/conda_init.sh
+        conda activate simons
         #python scripts/write_argweaver_to_hdf.py --store {output_file} --sample-dir $JOBDIR --glob-pattern '*.smc.stats'        
         python scripts/write_argweaver_to_table.py --sample-dir $JOBDIR --glob-pattern '*.smc.stats' | gzip > {output_file}
     fi
@@ -546,7 +561,7 @@ def argeaver_window_analysis(input_fasta_file, output_file):
 
 #     shell_spec = '''
 
-#     source activate argweaver
+#     conda activate argweaver
 #     arg-sample --{input_format} {input_file} \
 #         --popsize 10000 --recombrate 1.6e-8 \
 #         --mutrate 1.8e-8 --ntimes 20 --maxtime 200e3 \
@@ -570,7 +585,7 @@ def argeaver_window_analysis(input_fasta_file, output_file):
 # extract_tmrca = template(inputs=['{smc_file}'], outputs=['{tmrca_file}'], 
 #     walltime='00:59:00', memory='4g') << """
 
-#     source activate argweaver
+#     conda activate argweaver
 #     arg-extract-tmrca {smc_file} > {tmrca_file}
 
 #     """
@@ -591,7 +606,7 @@ def argeaver_window_analysis(input_fasta_file, output_file):
 
 #     shell_spec = """
 
-#     source activate argweaver
+#     conda activate argweaver
 #     INPUTFILESUFFIXES=({input_suffixes})
 #     OUTPUTFILESUFFIXES=({output_suffixes})
 #     MAXINDEX=$((${{#INPUTFILESUFFIXES[@]}}-1))
@@ -609,7 +624,7 @@ def argeaver_window_analysis(input_fasta_file, output_file):
 # smc2bed = template(inputs=['{smc_file}'], outputs=['{bed_file}'], 
 #     walltime='00:59:00', memory='4g') << """
 
-#     source activate argweaver
+#     conda activate argweaver
 #     smc2bed --times {times_file} --sample {sample_nr} {smc_file} | sort-bed - | gzip > {bed_file}
 
 #     """
@@ -631,7 +646,7 @@ def argeaver_window_analysis(input_fasta_file, output_file):
 
 #     shell_spec = """
 
-#     source activate argweaver
+#     conda activate argweaver
 #     INPUTFILESUFFIXES=({input_suffixes})
 #     TIMESFILESUFFIXES=({times_suffixes})
 #     OUTPUTFILESUFFIXES=({output_suffixes})
@@ -654,7 +669,7 @@ def argeaver_window_analysis(input_fasta_file, output_file):
 # summarize_arg = template(inputs=['{bed_file}'], outputs=['{summary_file}'], 
 #     walltime='00:59:00', memory='4g') << """
 
-#     source activate argweaver
+#     conda activate argweaver
 #     arg-summarize -a {bed_file} --time-file {times_file} -E -T -B -R -K -H -F -P -C > {summary_file}
 
 #     """
@@ -676,7 +691,7 @@ def argeaver_window_analysis(input_fasta_file, output_file):
 
 #     shell_spec = """
 
-#     source activate argweaver
+#     conda activate argweaver
 #     INPUTFILESUFFIXES=({input_suffixes})
 #     TIMESFILESUFFIXES=({times_suffixes})
 #     OUTPUTFILESUFFIXES=({output_suffixes})
@@ -710,7 +725,8 @@ def argweaver_extra_stats(input_file_name, output_file_name, excluded_pops, excl
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python ./scripts/argweaver_subset_tmrca_stats.py --exclpops {pops} --exclindivs {indivs} {input_file} {output_file}
 
     """.format(input_file=input_file_name, output_file=output_file_name, 
@@ -726,7 +742,8 @@ def compute_tmrca_window_stats(input_table_file, output_tmrca_file):
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python ./scripts/tmrca_in_windows.py {input_table_file} {output_tmrca_file}
 
     """.format(input_table_file=input_table_file, output_tmrca_file=output_tmrca_file)
@@ -742,7 +759,8 @@ def compute_extra_tmrca_window_stats(input_table_file, output_tmrca_file):
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python ./scripts/tmrca_extra_in_windows.py {input_table_file} {output_tmrca_file}
 
     """.format(input_table_file=input_table_file, output_tmrca_file=output_tmrca_file)
@@ -768,7 +786,8 @@ def compute_tree_stats(input_table_file, output_hdf_file, component_hdf_file, co
                'walltime': '24:00:00'}
 
     spec = """
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python ./scripts/tree_statistics.py \
     --pop-size 10000 \
     --min-post-prob 0.9 \
@@ -798,7 +817,7 @@ def compute_tree_stats(input_table_file, output_hdf_file, component_hdf_file, co
 
 #     spec = """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/slim_trees.py --selcoef {selcoef} --samples {samples} \
 #         --window 100000 --generationtime {gen_time} --mutationrate {mut_per_year} {slim_file} {tree_output} {hdf_output}
 
@@ -818,7 +837,8 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/slim_trees.py --selcoef {selcoef} --samples {samples} \
         --window 100000 --generationtime {gen_time} \
         --mutationrate {mut_per_year} --recrate {rec_rate} \
@@ -847,7 +867,8 @@ def slim_dist_twice(dist_file, dist_twice_file):
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/slim_dist_to_dist_twice.py {dist_file} {dist_twice_file}
 
     """.format(dist_file=dist_file, dist_twice_file=dist_twice_file)
@@ -874,7 +895,7 @@ def slim_dist_twice(dist_file, dist_twice_file):
     
 #     spec = """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/sweep_calling.py {extra_arg} {dist_file} {sweep_data_file}
 
 #     """.format(extra_arg=extra_arg, dist_file=dist_file, sweep_data_file=sweep_data_file)
@@ -884,10 +905,9 @@ def slim_dist_twice(dist_file, dist_twice_file):
 
 def sweep_data(dist_file, sweep_data_file, 
                min_sweep_clade_percent, pwdist_cutoff, 
-               cores=1, memory='60g', walltime='4:00:00'):
+               cores=1, memory='70g', walltime='4:00:00'):
     """
-    Make and dump data frame with all distances in both directions (indiv_1, indiv2 and indiv_2, indiv_1). 
-    Then calls sweeps.
+    Calls sweeps in individuals based on small distance to many other individuals.
     """
 
     options = {'memory': memory,
@@ -897,8 +917,36 @@ def sweep_data(dist_file, sweep_data_file,
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/sweep_calling.py \
+            --pwdist-cutoff {pwdist_cutoff} \
+            --min-sweep-clade-percent {min_sweep_clade_percent} \
+            {dist_file} {sweep_data_file}
+
+    """.format(dist_file=dist_file, sweep_data_file=sweep_data_file,
+              min_sweep_clade_percent=min_sweep_clade_percent, pwdist_cutoff=pwdist_cutoff)
+
+    return [dist_file], [sweep_data_file], options, spec
+
+
+def clique_data(dist_file, sweep_data_file, 
+               min_sweep_clade_percent, pwdist_cutoff, 
+               cores=1, memory='16g', walltime='4:00:00'):
+    """
+    Calls sweeps in individuals based on membership of clade where all mutual distances are small.
+    """
+
+    options = {'memory': memory,
+               'walltime': walltime,
+               'cores': cores,
+              } 
+
+    spec = """
+
+    source ./scripts/conda_init.sh
+    conda activate simons
+    python scripts/clique_calling.py \
             --pwdist-cutoff {pwdist_cutoff} \
             --min-sweep-clade-percent {min_sweep_clade_percent} \
             {dist_file} {sweep_data_file}
@@ -920,7 +968,7 @@ def sweep_data(dist_file, sweep_data_file,
 
 #     spec = """
 
-#     source activate simons
+#     conda activate simons
 #     python scripts/g1000_sweep_calling.py --dump-dist-twice {dump_dist_twice} {dist_file} {sweep_data_file}
 
 #     """.format(dump_dist_twice=dump_dist_twice, dist_file=dist_file, sweep_data_file=sweep_data_file)
@@ -932,14 +980,15 @@ def g1000_sweep_data(dist_file, sweep_data_file, min_sweep_clade_percent, pwdist
     Same as above but without adding meta data/
     """
 
-    options = {'memory': '16g',
+    options = {'memory': '24g',
                'walltime': '2:00:00',
                'cores': 1,
               } 
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     python scripts/g1000_sweep_calling.py \
             --pwdist-cutoff {pwdist_cutoff} \
             --min-sweep-clade-percent {min_sweep_clade_percent} \
@@ -963,7 +1012,8 @@ def g1000_fst(vcf_file, pop_files, out_file):
     fst_args = " ".join("--weir-fst-pop " + pop_file for pop_file in pop_files)
 
     spec = """
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     source /com/extra/vcftools/0.1.14/load.sh
     vcftools --gzvcf {vcf_file} --remove-indels --remove-filtered-all --max-alleles 2 \
         --fst-window-size 100000 {fst_args} --out {out_file}
