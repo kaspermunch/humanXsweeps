@@ -135,7 +135,8 @@ for chrom, mask_file in g1000_callability_mask_files.items():
         outputs=[masked_ref], 
         memory='16g', walltime='01:00:00') << """
 
-        source activate simons
+        source ./scripts/conda_init.sh
+        conda activate simons
         python scripts/1000gen_masked_href.py {href} {mask} {output}
 
     """.format(href=human_reference, mask=mask_file, output=masked_ref)
@@ -197,27 +198,34 @@ for chrom in autosomes + ['X']:
 # # mask admxiture segments in male x chromosomes
 # #################################################################################
 
-# g1000_admix_masked_male_haplotype_files = dict()
-# g1000_admix_masked_male_haplotype_files['X'] = g1000_male_haplotype_files['X']
-g1000_admix_masked_male_haplotype_files = g1000_male_haplotype_files
+# NB: admix masking is not done for 1000 genomes
+#g1000_admix_masked_male_haplotype_files = g1000_male_haplotype_files
 
-# g1000_admix_masked_male_haploids_dir = 
+############
 
-# # dir for files
-# admix_masked_male_x_haploids_dir = os.path.join(mydir, 'steps', 'male_x_haploids_admix_masked')
-# if not os.path.exists(admix_masked_male_x_haploids_dir):
-#     os.makedirs(admix_masked_male_x_haploids_dir)
+g1000_admix_masked_male_haplotype_files = dict()
 
-# admix_masked_male_x_haploids = [modpath(x, parent=admix_masked_male_x_haploids_dir, suffix='.fa') for x in male_x_haploids]
+# dir for files
+g1000_admix_masked_male_haploids_dir = os.path.join(mydir, 'steps', '1000genomes', 'male_haploids_admix_masked')
+if not os.path.exists(g1000_admix_masked_male_haploids_dir):
+    os.makedirs(g1000_admix_masked_male_haploids_dir)
 
-# min_admix_post_prob = 0.8
+min_admix_post_prob = 0.8
 
-# laurits_admix_pred_file = os.path.join(mydir, 'data/laurits_data/RestofworldHMMHaploid_samePAR.txt')
+g1000_laurits_admix_pred_file = '/project/simons/faststorage/data/HMMstuff/Xchrom/HMMXchrom_including_autosomes_from_standard_analysis.txt'
+# This is a concatenation of
+#/project/simons/faststorage/data/HMMstuff/Xchrom/HMMXchrom.txt
+# and the autosomes part of
+#/project/simons/faststorage/data/HMMstuff/1000Genomes/Archaicsegments1000G_subafr_keeprepeats.txt
 
-# for i, (unmasked, masked) in enumerate(zip(male_x_haploids, admix_masked_male_x_haploids)):
-#     gwf.target_from_template("admixmask1_x_{}".format(i), 
-#         admix_mask(unmasked_file=str(unmasked), masked_file=str(masked), 
-#         admix_pred_file=laurits_admix_pred_file, min_post_prob=min_admix_post_prob))
+for chrom in g1000_male_haplotype_files:
+    g1000_admix_masked_male_haplotype_files[chrom] = \
+        [modpath(x, parent=g1000_admix_masked_male_haploids_dir, suffix='.fa') for x in g1000_male_haplotype_files[chrom]]
+
+    for i, (unmasked, masked) in enumerate(zip(g1000_male_haplotype_files[chrom], g1000_admix_masked_male_haplotype_files[chrom])):
+        gwf.target_from_template("admixmask1_{}_{}".format(chrom, i), 
+            admix_mask(unmasked_file=str(unmasked), masked_file=str(masked), 
+            admix_pred_file=g1000_laurits_admix_pred_file, min_post_prob=min_admix_post_prob))
 
 
 #################################################################################
@@ -244,7 +252,7 @@ for chrom in autosomes + ['X']:
     # dict with male x admix masked haplotype files by population
     pop_file_dict = defaultdict(list)
     for file_name in g1000_admix_masked_male_haplotype_files[chrom]:
-        indiv, chrom, hap = re.search(r'/([^/]+)_(\S+)-([AB]).fa', str(file_name)).groups() 
+        indiv, chrom, hap = re.search(r'/([^/]+)_([^/_]+)-([AB]).fa', str(file_name)).groups() 
         pop = g1000_pops_by_male[indiv]
         pop_file_dict[pop].append(file_name)
 
@@ -264,8 +272,8 @@ for chrom in autosomes + ['X']:
         # iter male haploid pairs
         for file1, file2 in itertools.combinations(sorted(pop_files), 2):
 
-            indiv1, chrom1, hap1 = re.search(r'/([^/]+)_(\S+)-([AB]).fa', str(file1)).groups() 
-            indiv2, chrom2, hap2 = re.search(r'/([^/]+)_(\S+)-([AB]).fa', str(file2)).groups() 
+            indiv1, chrom1, hap1 = re.search(r'/([^/]+)_([^/_]+)-([AB]).fa', str(file1)).groups() 
+            indiv2, chrom2, hap2 = re.search(r'/([^/]+)_([^/_]+)-([AB]).fa', str(file2)).groups() 
 
             assert chrom1 == chrom and chrom2 == chrom
 
@@ -327,7 +335,8 @@ for chrom in autosomes + ['X']:
                        outputs=[pop_store_file, dist_twice_pop_store_file], 
             memory='2g', walltime='1:00:00') << """
 
-            source activate simons
+            source ./scripts/conda_init.sh
+            conda activate simons
             python scripts/g1000_build_male_dist_admix_masked_datasets.py \
                 --dist-dir {dist_dir} \
                 --out-file {out_file} \
@@ -399,9 +408,10 @@ for (chrom, pop, pwdist_cutoff), sweep_data_files in g1000_male_dist_admix_maske
         g = gwf.target("g1000_sweep_data_mixcalling_{}_{}_{:f}".format(chrom, pop, pwdist_cutoff),
             inputs=sweep_data_files, 
             outputs=[sweep_data_mixcall_file], 
-            memory='8g', walltime='1:00:00') << """
+            memory='24g', walltime='1:00:00') << """
 
-            source activate simons
+            source ./scripts/conda_init.sh
+            conda activate simons
             python scripts/g1000_sweep_mixcalling.py --chrom {chrom} --pop {pop} \
                 {sweep_data_inputdir} {sweep_data_outfile}
 
@@ -459,7 +469,8 @@ def hapdaf_genetic(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file)
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     source /com/extra/vcftools/0.1.14/load.sh
     vcftools --gzvcf {vcf_file} --keep {indiv_file} --remove-indels --remove-filtered-all \
         --max-alleles 2 --recode --recode-INFO-all --stdout | python scripts/hapdaf.py \
@@ -482,7 +493,8 @@ def hapdaf_physical(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file
 
     spec = """
 
-    source activate simons
+    source ./scripts/conda_init.sh
+    conda activate simons
     source /com/extra/vcftools/0.1.14/load.sh
     vcftools --gzvcf {vcf_file} --keep {indiv_file} --remove-indels --remove-filtered-all \
         --max-alleles 2 --recode --recode-INFO-all --stdout | python scripts/hapdaf.py \
