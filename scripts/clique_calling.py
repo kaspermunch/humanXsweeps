@@ -20,16 +20,45 @@ import analysis_globals
 
 def call_rolling_windows(df, pwdist_cutoff, min_sweep_clade_size):
     """
-
+    Input data frame holds windows for all individuals in a 500kb window.
+    dist values may be nan if there are too many uncalled bases, but may also
+    be nan if there is no unmasked bases left after admixture masking. We only
+    want to call the 500kb (and the constituent 100kb windows) as swept if all
+    five 100kb windows are not uncalled. But we want to allow nans if these are
+    induced by admixture masking.
     """
+
+    def mean_dist(df, dist_col):
+        if (df.uncalled > analysis_globals.max_uncalled_bases).any():
+            # there are uncalled windows in this 500kb so we report 
+            # it as nan to indicdate it cannot be called as swept
+            return numpy.nan
+        else:
+            # there are no uncalled windows so we ingnore any windows 
+            # with nan dist that are induced by missing data after
+            # admixture filtering
+            if df[dist_col].isnull().sum() > 2:
+                # but return nan if there are more than two such windows
+                return numpy.nan
+            return df[dist_col].mean()
+
 
     # build data frame to return
     cols = ['indiv_1', 'start', 'end', 'off']
     result_df = pandas.DataFrame(list(df.groupby(cols).groups.keys()), columns=cols)
 
-    # Get mean dist between pairs in the 500kb window (make mean nan if any 100kb is nan):
-    win_dist = df.groupby(['indiv_1', 'indiv_2']).dist.agg(numpy.mean)
+    ## NEW: #############################
+
+    # Get mean dist between pairs in the 500kb window:
+    win_dist = df.groupby(['indiv_1', 'indiv_2']).apply(mean_dist, 'dist')
+
+    ###############################
+
+    # # Get mean dist between pairs in the 500kb window (make mean nan if any 100kb is nan):
+    # win_dist = df.groupby(['indiv_1', 'indiv_2']).dist.agg(numpy.mean)
     
+    ###############################
+
     # Build graph
     graph = nx.Graph()
     for tup in win_dist[win_dist <= pwdist_cutoff].reset_index().itertuples():
@@ -59,11 +88,21 @@ def call_rolling_windows(df, pwdist_cutoff, min_sweep_clade_size):
             # mean_clade_dist is the mean dist of the clique
             indiv_pairs = list(itertools.combinations(sorted(clique), 2))
             result_df.loc[called, 'mean_clade_dist'] = win_dist.loc[indiv_pairs].mean()                
-                
+
+
     if 'dist_af' in df.columns:
-        
+
+        #### NEW: #########################
+
         # Get mean dist between pairs in the 500kb window (make mean nan if any 100kb is nan):
-        win_dist = df.groupby(['indiv_1', 'indiv_2']).dist_af.agg(numpy.mean)
+        win_dist = df.groupby(['indiv_1', 'indiv_2']).apply(mean_dist, 'dist_af')
+
+        #############################
+        
+        # # Get mean dist between pairs in the 500kb window (make mean nan if any 100kb is nan):
+        # win_dist = df.groupby(['indiv_1', 'indiv_2']).dist_af.agg(numpy.mean)
+
+        #############################
 
         # Build graph
         graph = nx.Graph()
@@ -171,9 +210,11 @@ window_size = len(offsets) * offset
 
 all_male_dist_twice = pandas.read_hdf(args.dist_file_name)
 
+# print('all_male_dist_twice', "Ust_Ishim" in all_male_dist_twice.indiv_1.unique())
+
 # remove unused columns
 to_keep = ['indiv_1', 'indiv_2', 'start', 'end', 'dist', 'dist_af', 
-           'region_1', 'region_2', 'pop_1', 'region_label_1', 'region_id_1']
+           'region_1', 'region_2', 'pop_1', 'region_label_1', 'region_id_1', 'uncalled']
 to_drop = [x for x in all_male_dist_twice.columns if x not in to_keep]
 all_male_dist_twice.drop(to_drop, axis=1, inplace=True)
 gc.collect()
@@ -197,6 +238,8 @@ stats_data = (all_male_dist_twice
         .apply(window_stats)
         .reset_index(level=gr_cols)
         )
+
+# print('stats_data', "Ust_Ishim" in stats_data.indiv_1.unique())
 
 lst = list()
 # loop over five offsets of 500kb windows
@@ -231,11 +274,15 @@ sweep_calls = (pandas.concat(lst)
 del lst[:]
 gc.collect()
 
+# print('sweep_calls', "Ust_Ishim" in sweep_calls.indiv_1.unique())
+
 sweep_data = stats_data.merge(sweep_calls, on=['indiv_1', 'start', 'end'])
 
 del stats_data
 del sweep_calls
 gc.collect()
+
+# print('sweep_data', "Ust_Ishim" in sweep_data.indiv_1.unique())
 
 # get run length of swept windows and call windows as part of sweeps (ECH haplotypes)
 def run_id(sr):
@@ -267,5 +314,9 @@ if 'called_af' in sweep_data.columns:
 
 gc.collect()
 
+# print('sweep_data', "Ust_Ishim" in sweep_data.indiv_1.unique())
+
 # write to hdf output file
 sweep_data.to_hdf(args.sweep_data_file_name, 'df', mode='w', format='table')
+
+
