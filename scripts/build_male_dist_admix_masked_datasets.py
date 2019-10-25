@@ -135,12 +135,16 @@ dist_data['region_label_2'] = [individuals[x]['Region'] for x in dist_data.indiv
 region_id = {'Africa': 0, 'WestEurasia': 1, 'SouthAsia': 2,
              'CentralAsiaSiberia': 3, 'Oceania': 4, 'EastAsia': 5, 'America':6,
              'Ust_Ishim': 7}
+if args.include_ust_ishim:
+    region_id['Ust_Ishim'] = 7
 dist_data['region_id_1'] = [region_id[x] for x in dist_data.region_label_1]
 dist_data['region_id_2'] = [region_id[x] for x in dist_data.region_label_2]
 
 # ordered list of region categories
 region_categories = ['Africa', 'WestEurasia', 'SouthAsia', 'CentralAsiaSiberia',
-                     'Oceania', 'EastAsia', 'America']
+                    'Oceania', 'EastAsia', 'America']
+if args.include_ust_ishim:
+    region_categories.append('Ust_Ishim')
 dist_data['region_1'] = pandas.Categorical(dist_data.region_label_1, categories=region_categories, ordered=True)
 dist_data['region_2'] = pandas.Categorical(dist_data.region_label_2, categories=region_categories, ordered=True)
 
@@ -166,56 +170,116 @@ dist_data.to_hdf(str(args.out_file), 'df',  mode='w', format="table", data_colum
 
 
 
-def dist_twice(dist_data):
+# def dist_twice(dist_data):
 
-    #we use the global individuals defined above...
-    #individuals, populations, regions = simons_meta_data.get_meta_data(meta_data_dir=analysis_globals.meta_data_dir)
+#     #we use the global individuals defined above...
+#     #individuals, populations, regions = simons_meta_data.get_meta_data(meta_data_dir=analysis_globals.meta_data_dir)
 
-    if 'dist_af' in dist_data.columns:
-        # this is not a simulation
+#     if 'dist_af' in dist_data.columns:
+#         # this is not a simulation
 
-        dist_data.drop('pop_label', axis=1, inplace=True)
+#         dist_data.drop('pop_label', axis=1, inplace=True)
 
-        dist_data['pop_1'] = [individuals[x]['Population ID'] for x in dist_data.indiv_1]
-        dist_data['pop_2'] = [individuals[x]['Population ID'] for x in dist_data.indiv_2]
+#         dist_data['pop_1'] = [individuals[x]['Population ID'] for x in dist_data.indiv_1]
+#         dist_data['pop_2'] = [individuals[x]['Population ID'] for x in dist_data.indiv_2]
 
-    # dict for swapping columns
-    swap_dict = dict()
-    for colname in dist_data.columns.values:
-        if colname.endswith('_1'):
-            swap_dict[colname] = colname[:-2] + '_2'
-        if colname.endswith('_2'):
-            swap_dict[colname] = colname[:-2] + '_1'
+#     # dict for swapping columns
+#     swap_dict = dict()
+#     for colname in dist_data.columns.values:
+#         if colname.endswith('_1'):
+#             swap_dict[colname] = colname[:-2] + '_2'
+#         if colname.endswith('_2'):
+#             swap_dict[colname] = colname[:-2] + '_1'
 
-    if 'dist_af' in dist_data.columns:
-        # this is not a simulation
-        cols = ['start', 'end', 'indiv_1', 'indiv_2', 
-                'dist', 'mismatch', 'match', 
-                'dist_af', 'mismatch_af', 'match_af',
-                'uncalled', 'pop_1', 'pop_2',
-                'region_label_1', 'region_label_2', 
-                'region_id_1', 'region_id_2', 'region_1', 'region_2']
-    else:
-        cols =['start', 'end', 'indiv_1', 'indiv_2', 'dist']
+#     if 'dist_af' in dist_data.columns:
+#         # this is not a simulation
+#         cols = ['start', 'end', 'indiv_1', 'indiv_2', 
+#                 'dist', 'mismatch', 'match', 
+#                 'dist_af', 'mismatch_af', 'match_af',
+#                 'uncalled', 'pop_1', 'pop_2',
+#                 'region_label_1', 'region_label_2', 
+#                 'region_id_1', 'region_id_2', 'region_1', 'region_2']
+#     else:
+#         cols =['start', 'end', 'indiv_1', 'indiv_2', 'dist']
 
-    dist_data_twice = (pandas.concat([dist_data[cols],
-                                      dist_data[cols].rename(columns=swap_dict)])
-        .sort_values(['indiv_1', 'start'])
-        .reset_index(drop=True)
-        )
+#     dist_data_twice = (pandas.concat([dist_data[cols],
+#                                       dist_data[cols].rename(columns=swap_dict)])
+#         .sort_values(['indiv_1', 'start'])
+#         .reset_index(drop=True)
+#         )
     
-    # mask uncalled windows:
-    dist_data_twice.dist.where(dist_data_twice.uncalled <= analysis_globals.max_uncalled_bases, 
-                               inplace=True)
-    if 'dist_af' in dist_data.columns:
-        dist_data_twice.dist_af.where(dist_data_twice.uncalled <= analysis_globals.max_uncalled_bases, 
-                                   inplace=True)
+#     # mask uncalled windows:
+#     dist_data_twice.dist.where(dist_data_twice.uncalled <= analysis_globals.max_uncalled_bases, 
+#                                inplace=True)
+#     if 'dist_af' in dist_data.columns:
+#         dist_data_twice.dist_af.where(dist_data_twice.uncalled <= analysis_globals.max_uncalled_bases, 
+#                                    inplace=True)
 
-    return dist_data_twice
+#     return dist_data_twice
 
 
-##### apply function and write hdf
-all_male_dist_twice = dist_twice(dist_data)
+# ##### apply function and write hdf
+# all_male_dist_twice = dist_twice(dist_data)
+
+
+###################
+
+if 'dist_af' in dist_data.columns:
+    # this is not a simulation
+
+    dist_data.drop('pop_label', axis=1, inplace=True)
+
+    dist_data['pop_1'] = [individuals[x]['Population ID'] for x in dist_data.indiv_1]
+    dist_data['pop_2'] = [individuals[x]['Population ID'] for x in dist_data.indiv_2]
+
+# dict for swapping columns
+swap_dict = dict()
+for colname in dist_data.columns.values:
+    if colname.endswith('_1'):
+        swap_dict[colname] = colname[:-2] + '_2'
+    if colname.endswith('_2'):
+        swap_dict[colname] = colname[:-2] + '_1'
+
+if 'dist_af' in dist_data.columns:
+    # this is not a simulation
+    cols = ['start', 'end', 'indiv_1', 'indiv_2', 
+            'dist', 'mismatch', 'match', 
+            'dist_af', 'mismatch_af', 'match_af',
+            'uncalled', 'pop_1', 'pop_2',
+            'region_label_1', 'region_label_2', 
+            'region_id_1', 'region_id_2', 'region_1', 'region_2']
+else:
+    cols =['start', 'end', 'indiv_1', 'indiv_2', 'dist']
+
+all_male_dist_twice = (pandas.concat([dist_data[cols],
+                                  dist_data[cols].rename(columns=swap_dict)])
+    .sort_values(['indiv_1', 'start'])
+    .reset_index(drop=True)
+    )
+
+
+if args.include_ust_ishim:
+    # compute an adjusted max_uncalled_bases for ust ishim that gives pairs includeing ust ishim
+    # the same number of non-missing windows as the average pair not including ust ishim:
+    ust_ishim_uncalled = all_male_dist_twice.loc[all_male_dist_twice.indiv_1 == 'Ust_Ishim'].uncalled
+    other_indiv_uncalled = all_male_dist_twice.loc[all_male_dist_twice.indiv_1 != 'Ust_Ishim'].uncalled
+    quant = (other_indiv_uncalled <= analysis_globals.max_uncalled_bases).sum() / other_indiv_uncalled.size
+    ust_ishim_max_uncalled_bases = int(np.quantile(ust_ishim_uncalled, quant))
+
+    # mask uncalled windows using the two different cutoffs:
+    mask = (all_male_dist_twice.uncalled <= analysis_globals.max_uncalled_bases) | \
+        ((all_male_dist_twice.indiv_1 == 'Ust_Ishim') | (all_male_dist_twice.indiv_2 == 'Ust_Ishim')) & \
+        (all_male_dist_twice.uncalled <= ust_ishim_max_uncalled_bases)
+    
+else:
+    mask = all_male_dist_twice.uncalled <= analysis_globals.max_uncalled_bases
+
+# mask uncalled windows:
+all_male_dist_twice.dist.where(mask, inplace=True)
+if 'dist_af' in dist_data.columns:
+    all_male_dist_twice.dist_af.where(mask, inplace=True)
+
+######################
 
 #all_male_dist_twice = optimize_data_frame(all_male_dist_twice, down_int='unsigned')
 all_male_dist_twice = optimize_data_frame(all_male_dist_twice, down_int='unsigned')
