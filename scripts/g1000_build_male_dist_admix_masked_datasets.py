@@ -90,7 +90,7 @@ dist_data.sort_values(by=['chrom', 'indiv_1', 'start'], inplace=True)
 dist_data = optimize_data_frame(dist_data, down_int='unsigned')
 gc.collect()
 
-dist_data.to_hdf(str(args.out_file), 'df',  mode='w', format="table", data_columns=['indiv_1', 'start', 'end']) # we index all data columns 
+dist_data.to_hdf(str(args.out_file), 'df',  mode='w', format="table")  
 
 ##### copied this over from g1000_sweep_calling.py
 def dist_twice(dist_data):
