@@ -829,7 +829,7 @@ def compute_tree_stats(input_table_file, output_hdf_file, component_hdf_file, co
 
 
 def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, sweep_start, demography,
- chrom, xreduction, total_sim_generations, slim_tree_file, slim_dist_file):
+ chrom, xreduction, total_sim_generations, slim_tree_file, slim_dist_file, slim_sites_file):
 
     options = {'memory': '8g',
                'walltime': '05:00:00'
@@ -846,7 +846,7 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
         --demography {demography} \
         --chrom {chrom} --x-size-reduction {xreduction} \
         --totalgenerations {total_sim_generations} \
-        {tree_output} {hdf_output}
+        {tree_output} {dist_output} {sites_output}
             
     """.format(selcoef=selcoef, gen_time=gen_time, 
             mut_per_year=mut_per_year, rec_rate=rec_rate,
@@ -854,9 +854,11 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
             total_sim_generations=total_sim_generations,
             demography=' '.join("{}:{}".format(*pair) for pair in demography),
             chrom=chrom, xreduction=xreduction,
-            tree_output=slim_tree_file, hdf_output=slim_dist_file)
+            tree_output=slim_tree_file, 
+            dist_output=slim_dist_file,
+            sites_output=slim_sites_file)
 
-    return [], [slim_tree_file, slim_dist_file], options, spec
+    return [], [slim_tree_file, slim_dist_file, slim_sites_file], options, spec
 
 
 def slim_dist_twice(dist_file, dist_twice_file):
@@ -932,7 +934,7 @@ def sweep_data(dist_file, sweep_data_file,
 
 def clique_data(dist_file, sweep_data_file, 
                min_sweep_clade_percent, pwdist_cutoff, 
-               cores=1, memory='16g', walltime='4:00:00'):
+               cores=1, memory='16g', walltime='48:00:00'):
     """
     Calls sweeps in individuals based on membership of clade where all mutual distances are small.
     """
@@ -975,29 +977,30 @@ def clique_data(dist_file, sweep_data_file,
 
 #     return [dist_file], [sweep_data_file, dump_dist_twice], options, spec
 
-def g1000_sweep_data(dist_file, sweep_data_file, min_sweep_clade_percent, pwdist_cutoff):
-    """
-    Same as above but without adding meta data/
-    """
+# def g1000_sweep_data(dist_file, sweep_data_file, min_sweep_clade_percent, pwdist_cutoff):
+#     """
+#     Same as above but without adding meta data/
+#     """
 
-    options = {'memory': '24g',
-               'walltime': '2:00:00',
-               'cores': 1,
-              } 
+#     options = {'memory': '24g',
+#                'walltime': '2:00:00',
+#                'cores': 1,
+#               } 
 
-    spec = """
+#     spec = """
 
-    source ./scripts/conda_init.sh
-    conda activate simons
-    python scripts/g1000_sweep_calling.py \
-            --pwdist-cutoff {pwdist_cutoff} \
-            --min-sweep-clade-percent {min_sweep_clade_percent} \
-            {dist_file} {sweep_data_file}
+#     source ./scripts/conda_init.sh
+#     conda activate simons
+#     python scripts/g1000_sweep_calling.py \
+#             --pwdist-cutoff {pwdist_cutoff} \
+#             --min-sweep-clade-percent {min_sweep_clade_percent} \
+#             {dist_file} {sweep_data_file}
 
-    """.format(dist_file=dist_file, sweep_data_file=sweep_data_file, 
-               min_sweep_clade_percent=min_sweep_clade_percent, pwdist_cutoff=pwdist_cutoff)
+#     """.format(dist_file=dist_file, sweep_data_file=sweep_data_file, 
+#                min_sweep_clade_percent=min_sweep_clade_percent, pwdist_cutoff=pwdist_cutoff)
 
-    return [dist_file], [sweep_data_file], options, spec
+#     return [dist_file], [sweep_data_file], options, spec
+
 
 
 def g1000_fst(vcf_file, pop_files, out_file):

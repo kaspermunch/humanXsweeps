@@ -70,8 +70,5 @@ def optimize_data_frame(df, down_int='integer'):
 
 dist_data_twice = optimize_data_frame(dist_data_twice, down_int='unsigned')
 
-dist_data_twice.to_hdf(str(args.dist_twice_file), 'df', 
-                           data_columns=['start', 'end', 
-                                     'indiv_1', 'indiv_2'],
-                           format='table', mode='w'
-)
+dist_data_twice.to_hdf(str(args.dist_twice_file), 'df', format='table', mode='w')
+

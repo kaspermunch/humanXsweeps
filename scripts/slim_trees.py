@@ -121,7 +121,8 @@ parser.add_argument("--totalgenerations", type=int)
 parser.add_argument("--dumpscript", action='store_true')
 #parser.add_argument("slurm_script", type=str)
 parser.add_argument("trees_file", type=str)
-parser.add_argument("hdf_file", type=str)
+parser.add_argument("dist_file", type=str)
+parser.add_argument("sites_file", type=str)
 args = parser.parse_args()
 
 window_size = args.window
@@ -211,6 +212,8 @@ table = np.array([list(map(np.int8, hap)) for hap in sample]).transpose()
 # turn table into dataframe with positions
 df = DataFrame(table, dtype='int8')
 df['pos'] = positions
+# write sites to hdf
+df.to_hdf(args.sites_file, 'df', format='table', mode='w')
 
 # add a row with zeros for the start of each window so there is at least
 # one row in each window
@@ -247,4 +250,4 @@ pw_dist_df.insert(loc=1, column='end', value=pw_dist_df.start + window_size)
 # convert indiv labels from object to int and and write hdf
 pw_dist_df['indiv_1'] = pw_dist_df['indiv_1'].astype('uint16')
 pw_dist_df['indiv_2'] = pw_dist_df['indiv_2'].astype('uint16')
-pw_dist_df.to_hdf(args.hdf_file, 'df', format='table', mode='w')
+pw_dist_df.to_hdf(args.dist_file, 'df', format='table', mode='w')
