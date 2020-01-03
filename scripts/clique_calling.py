@@ -172,16 +172,27 @@ def call_swept(df):
 
 def _window_stats(df, pwdist_cutoff, min_sweep_clade_size):
     if 'dist_af' in df.columns:
-        return pandas.DataFrame({
-                                'mean_dist': [df.dist.mean()],
-                                'mean_dist_to_africans': [df.loc[df.region_2 == 'Africa', 'dist'].mean()],
-                                'mean_dist_af': [df.dist_af.mean()],
-                                'mean_dist_to_africans_af': [df.loc[df.region_2 == 'Africa', 'dist_af'].mean()],
-                                'win_swept': (df.dist <= pwdist_cutoff).sum() >= min_sweep_clade_size,
-                                'win_swept_af': (df.dist_af <= pwdist_cutoff).sum() >= 
-                                                min_sweep_clade_size,
-                                'prop_indivs_missing': [numpy.isnan(df.dist).sum() / df.dist.size]
-                                })
+        if set([ 'pop_1', 'region_label_1', 'region_id_1', 'region_1']).issubset(all_male_dist_twice.columns):
+            return pandas.DataFrame({
+                                    'mean_dist': [df.dist.mean()],
+                                    'mean_dist_to_africans': [df.loc[df.region_2 == 'Africa', 'dist'].mean()],
+                                    'mean_dist_af': [df.dist_af.mean()],
+                                    'mean_dist_to_africans_af': [df.loc[df.region_2 == 'Africa', 'dist_af'].mean()],
+                                    'win_swept': (df.dist <= pwdist_cutoff).sum() >= min_sweep_clade_size,
+                                    'win_swept_af': (df.dist_af <= pwdist_cutoff).sum() >= 
+                                                    min_sweep_clade_size,
+                                    'prop_indivs_missing': [numpy.isnan(df.dist).sum() / df.dist.size]
+                                    })
+        else:
+            # 1000 genomes
+            return pandas.DataFrame({
+                                    'mean_dist': [df.dist.mean()],
+                                    'mean_dist_af': [df.dist_af.mean()],
+                                    'win_swept': (df.dist <= pwdist_cutoff).sum() >= min_sweep_clade_size,
+                                    'win_swept_af': (df.dist_af <= pwdist_cutoff).sum() >= 
+                                                    min_sweep_clade_size,
+                                    'prop_indivs_missing': [numpy.isnan(df.dist).sum() / df.dist.size]
+                                    })            
     else:
         return pandas.DataFrame({
                         'mean_dist': [df.dist.mean()],
@@ -234,8 +245,13 @@ if __name__ == "__main__":
     # merge window sweep info with distance data
     if 'dist_af' in all_male_dist_twice.columns:
         # this is not a simulation
-        gr_cols = ['indiv_1', 'start', 'end', 'pop_1', 'region_label_1', 'region_id_1', 'region_1']
+        if set([ 'pop_1', 'region_label_1', 'region_id_1', 'region_1']).issubset(all_male_dist_twice.columns):
+            # this is not 1000 genomes
+            gr_cols = ['indiv_1', 'start', 'end', 'pop_1', 'region_label_1', 'region_id_1', 'region_1']
+        else:
+            gr_cols = ['indiv_1', 'start', 'end']
     else:
+        # simulation
         gr_cols = ['indiv_1', 'start', 'end']
     stats_data = (all_male_dist_twice
             .groupby(gr_cols)
