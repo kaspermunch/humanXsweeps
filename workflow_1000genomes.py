@@ -193,7 +193,27 @@ for chrom in autosomes + ['X']:
             sample_id=sample_id, 
             out_file1=haplo_file1, out_file2=haplo_file2))
 
+#################################################################################
+# Count called bases in 100kb windows on each haplotype (females for use with hapdaf)
+#################################################################################
 
+# Females
+g1000_female_haplo_dir = os.path.join(mydir, 'steps', '1000genomes', 'haplotypes', 'females')
+
+g1000_female_haplotype_missing_data_windows_file = os.path.join(g1000_female_haplo_dir, 'called_100kb.hdf')
+        
+g = gwf.target("g1000_count_called_females", 
+               inputs=g1000_female_haplotype_files, 
+               outputs=[g1000_female_haplotype_missing_data_windows_file], 
+               memory='8g', walltime='24:00:00') << """
+
+source ./scripts/conda_init.sh
+conda activate simons
+python scripts/g1000_called_100kb.py {input_dir} {out_file}
+
+""".format(input_dir=g1000_female_haplo_dir,
+                   out_file=g1000_female_haplotype_missing_data_windows_file)
+        
 # #################################################################################
 # # mask admxiture segments in male x chromosomes
 # #################################################################################
@@ -454,85 +474,85 @@ for fst_pops in fst_pop_sets:
             g1000_fst(g1000_vcf_files[chrom], fst_pop_files, out_file))
 
 
-# #################################################################################
-# # hapDAF in all females
-# #################################################################################
+#################################################################################
+# hapDAF in all females
+#################################################################################
 
-# def hapdaf_genetic(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file):
-#     """
-#     Computes 
-#     """
+def hapdaf_genetic(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file):
+    """
+    Computes 
+    """
 
-#     options = {'memory': '1g',
-#                'walltime': '10:00:00',
-#               } 
+    options = {'memory': '1g',
+               'walltime': '10:00:00',
+              } 
 
-#     spec = """
+    spec = """
 
-#     source ./scripts/conda_init.sh
-#     conda activate simons
-#     source /com/extra/vcftools/0.1.14/load.sh
-#     vcftools --gzvcf {vcf_file} --keep {indiv_file} --remove-indels --remove-filtered-all \
-#         --max-alleles 2 --recode --recode-INFO-all --stdout | python scripts/hapdaf.py \
-#         --vcf stdin --ancestral {ancestral_file} --recmap {rec_map_file} --window 0.05 --outfile {out_file}
+    source ./scripts/conda_init.sh
+    conda activate simons
+    source /com/extra/vcftools/0.1.14/load.sh
+    vcftools --gzvcf {vcf_file} --keep {indiv_file} --remove-indels --remove-filtered-all \
+        --max-alleles 2 --recode --recode-INFO-all --stdout | python scripts/hapdaf.py \
+        --vcf stdin --ancestral {ancestral_file} --recmap {rec_map_file} --window 0.05 --outfile {out_file}
 
-#     """.format(vcf_file=vcf_file, indiv_file=indiv_file, ancestral_file=ancestral_file, 
-#             rec_map_file=rec_map_file, out_file=out_file)
+    """.format(vcf_file=vcf_file, indiv_file=indiv_file, ancestral_file=ancestral_file, 
+            rec_map_file=rec_map_file, out_file=out_file)
 
     
-#     return [vcf_file, indiv_file, ancestral_file, rec_map_file], [out_file], options, spec
+    return [vcf_file, indiv_file, ancestral_file, rec_map_file], [out_file], options, spec
 
-# def hapdaf_physical(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file):
-#     """
-#     Computes 
-#     """
+def hapdaf_physical(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file):
+    """
+    Computes 
+    """
 
-#     options = {'memory': '1g',
-#                'walltime': '10:00:00',
-#               } 
+    options = {'memory': '1g',
+               'walltime': '10:00:00',
+              } 
 
-#     spec = """
+    spec = """
 
-#     source ./scripts/conda_init.sh
-#     conda activate simons
-#     source /com/extra/vcftools/0.1.14/load.sh
-#     vcftools --gzvcf {vcf_file} --keep {indiv_file} --remove-indels --remove-filtered-all \
-#         --max-alleles 2 --recode --recode-INFO-all --stdout | python scripts/hapdaf.py \
-#         --vcf stdin --ancestral {ancestral_file} --window 200000 --outfile {out_file}
+    source ./scripts/conda_init.sh
+    conda activate simons
+    source /com/extra/vcftools/0.1.14/load.sh
+    vcftools --gzvcf {vcf_file} --keep {indiv_file} --remove-indels --remove-filtered-all \
+        --max-alleles 2 --recode --recode-INFO-all --stdout | python scripts/hapdaf.py \
+        --vcf stdin --ancestral {ancestral_file} --window 200000 --outfile {out_file}
 
-#     """.format(vcf_file=vcf_file, indiv_file=indiv_file, ancestral_file=ancestral_file, out_file=out_file)
+    """.format(vcf_file=vcf_file, indiv_file=indiv_file, ancestral_file=ancestral_file, out_file=out_file)
     
-#     return [vcf_file, indiv_file, ancestral_file, rec_map_file], [out_file], options, spec
+    return [vcf_file, indiv_file, ancestral_file, rec_map_file], [out_file], options, spec
 
 
-# g1000_hapdaf_dir = os.path.join(mydir, 'steps', '1000genomes', 'hapdaf')
-# if not os.path.exists(g1000_hapdaf_dir):
-#     os.makedirs(g1000_hapdaf_dir)
+g1000_hapdaf_dir = os.path.join(mydir, 'steps', '1000genomes', 'hapdaf')
+if not os.path.exists(g1000_hapdaf_dir):
+    os.makedirs(g1000_hapdaf_dir)
 
-# # write a file with all female non-Africans:
-# female_indiv_file = modpath('non_afr_females.txt', parent=g1000_hapdaf_dir)
-# # non_afr_pops = analysis_globals.g1000_pop_info.loc[lambda df: df.superpop != 'AFR', 'population'].tolist()
-# # female_nonafr = list()
-# # for p in non_afr_pops:
-# #     female_nonafr.extend(g1000_females_by_pop[p])
-# # with open(female_indiv_file, 'w') as f:
-# #     print('\n'.join(female_nonafr), file=f)
+# write a file with all female non-Africans:
+female_indiv_file = modpath('non_afr_females.txt', parent=g1000_hapdaf_dir)
+# non_afr_pops = analysis_globals.g1000_pop_info.loc[lambda df: df.superpop != 'AFR', 'population'].tolist()
+# female_nonafr = list()
+# for p in non_afr_pops:
+#     female_nonafr.extend(g1000_females_by_pop[p])
+# with open(female_indiv_file, 'w') as f:
+#     print('\n'.join(female_nonafr), file=f)
 
-# # write a file with all male non-Africans:
-# # male_indiv_file = modpath('non_afr_males.txt', parent=g1000_hapdaf_dir)
-# # non_afr_pops = analysis_globals.g1000_pop_info.loc[lambda df: df.superpop != 'AFR', 'population'].tolist()
-# # male_nonafr = list()
-# # for p in non_afr_pops:
-# #     male_nonafr.extend(g1000_males_by_pop[p])
-# # with open(male_indiv_file, 'w') as f:
-# #     print('\n'.join(male_nonafr), file=f)
+# write a file with all male non-Africans:
+# male_indiv_file = modpath('non_afr_males.txt', parent=g1000_hapdaf_dir)
+# non_afr_pops = analysis_globals.g1000_pop_info.loc[lambda df: df.superpop != 'AFR', 'population'].tolist()
+# male_nonafr = list()
+# for p in non_afr_pops:
+#     male_nonafr.extend(g1000_males_by_pop[p])
+# with open(male_indiv_file, 'w') as f:
+#     print('\n'.join(male_nonafr), file=f)
 
-# g1000_hapdaf_files = list()
-# for chrom, vcf_file in g1000_vcf_files.items():
+g1000_hapdaf_files = list()
+for chrom, vcf_file in g1000_vcf_files.items():
 
-#     ancestral_file = '/home/kmt/simons/faststorage/data/1000Genomes/ancestral_alignmens/human_ancestor_GRCh37_e59/human_ancestor_{}.fa'.format(chrom)
-#     rec_map_file = 'data/plink_maps/plink.GRCh37.map/plink.chr{}.GRCh37.map'.format(chrom)
-#     out_file = modpath('hapdaf_physical_{}.txt'.format(chrom), parent=g1000_hapdaf_dir)
-#     g1000_hapdaf_files.append(out_file)
+    ancestral_file = '/home/kmt/simons/faststorage/data/1000Genomes/ancestral_alignmens/human_ancestor_GRCh37_e59/human_ancestor_{}.fa'.format(chrom)
+    rec_map_file = 'data/plink_maps/plink.GRCh37.map/plink.chr{}.GRCh37.map'.format(chrom)
+    out_file = modpath('hapdaf_physical_{}.txt'.format(chrom), parent=g1000_hapdaf_dir)
+    g1000_hapdaf_files.append(out_file)
 
-#     gwf.target_from_template('hapdaf_{}'.format(chrom), hapdaf_physical(vcf_file, female_indiv_file, ancestral_file, rec_map_file, out_file))
+    gwf.target_from_template('hapdaf_{}'.format(chrom), hapdaf_physical(vcf_file, female_indiv_file, ancestral_file, rec_map_file, out_file))
