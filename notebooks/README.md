@@ -8,6 +8,10 @@
 - Notebooks 26-28 is a supplementary analysis of 1000 genomes data.
 - Notebooks 29-30 intersects main analysis with circRNA data
 
+`workflow.py` runs all notebooks in order usng GWF and generates html:
 
-workflow.py runs all notebooks in order usng GWF and generates html. Note that peak memory required is above 100G.
+    gwf run
+
+Note that peak memory required is above 100G and that several of the notebooks assume access to multiple cores.
+
 
