@@ -829,7 +829,7 @@ def compute_tree_stats(input_table_file, output_hdf_file, component_hdf_file, co
 
 
 def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, sweep_start, demography,
- chrom, xreduction, total_sim_generations, slim_tree_file, slim_dist_file, slim_sites_file):
+ chrom, reduction, total_sim_generations, slim_tree_file, slim_dist_file, slim_sites_file):
 
     options = {'memory': '8g',
                'walltime': '05:00:00'
@@ -844,7 +844,7 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
         --mutationrate {mut_per_year} --recrate {rec_rate} \
         --sweep {sweep_type} --sweepstart {sweep_start} \
         --demography {demography} \
-        --chrom {chrom} --x-size-reduction {xreduction} \
+        --chrom {chrom} --size-reduction {reduction} \
         --totalgenerations {total_sim_generations} \
         {tree_output} {dist_output} {sites_output}
             
@@ -853,7 +853,7 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
             samples=samples, sweep_type=sweep_type, sweep_start=sweep_start, 
             total_sim_generations=total_sim_generations,
             demography=' '.join("{}:{}".format(*pair) for pair in demography),
-            chrom=chrom, xreduction=xreduction,
+            chrom=chrom, reduction=reduction,
             tree_output=slim_tree_file, 
             dist_output=slim_dist_file,
             sites_output=slim_sites_file)
