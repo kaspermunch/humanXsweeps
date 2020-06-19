@@ -131,7 +131,11 @@ def sq_freq_pairs(lst, pos, end, size, max_ancest_freq, min_tot_freq, gen_dist=F
     
     f_vals = list()        
     positions = pos < end and range(pos+1, end) or range(pos-1, end-1, -1)
+    nr_snps = 0
     for i in positions:
+
+        nr_snps += 1
+
         deriv_pos, deriv_gen_pos, deriv = lst[i]
         # deriv &= mask
 
@@ -139,7 +143,7 @@ def sq_freq_pairs(lst, pos, end, size, max_ancest_freq, min_tot_freq, gen_dist=F
             break
         if not gen_dist and abs(focal_pos - deriv_pos) > size:
             break
-                
+
         f_d = (focal_deriv & deriv).count() / focal_deriv_count
         f_a = (focal_ancest & deriv).count() / focal_ancest_count
         f_tot = deriv.count() / deriv.length()
@@ -147,7 +151,7 @@ def sq_freq_pairs(lst, pos, end, size, max_ancest_freq, min_tot_freq, gen_dist=F
         if f_d > f_a and f_a <= max_ancest_freq and f_tot >= min_tot_freq:
             f_vals.append((f_d**2, f_a**2))
 
-    return f_vals
+    return f_vals, nr_snps
 
 
 epilog = """
@@ -232,17 +236,23 @@ for i, (phys_pos, gen_pos, ba) in enumerate(data):
         continue
 
     gen_dist = bool(args.recmap_file)
-    sq_freqs = sq_freq_pairs(data, i, 0, args.window_size/2, args.max_ancest_freq, args.min_tot_freq, gen_dist) + \
-        sq_freq_pairs(data, i, len(data), args.window_size/2, args.max_ancest_freq, args.min_tot_freq, gen_dist)
+    sq_freqs_left, nr_snps_left = sq_freq_pairs(data, i, 0, args.window_size/2, args.max_ancest_freq, args.min_tot_freq, gen_dist)
+    sq_freqs_right, nr_snps_right = sq_freq_pairs(data, i, len(data), args.window_size/2, args.max_ancest_freq, args.min_tot_freq, gen_dist)
+
+    sq_freqs = sq_freqs_left + sq_freqs_right
+    nr_snps = nr_snps_left + nr_snps_right
+
+    # sq_freqs = sq_freq_pairs(data, i, 0, args.window_size/2, args.max_ancest_freq, args.min_tot_freq, gen_dist) + \
+    #     sq_freq_pairs(data, i, len(data), args.window_size/2, args.max_ancest_freq, args.min_tot_freq, gen_dist)
 
     if sq_freqs:
         hapdaf = sum(x - y for x, y in sq_freqs) / len(sq_freqs)
-        results.append((phys_pos, gen_pos, hapdaf, freq))
+        results.append((phys_pos, gen_pos, hapdaf, freq, nr_snps))
     
 if args.out_file:
     out = open(args.out_file, 'w')
 else:
     out = sys.stdout
-print('#', 'phys_pos', 'gen_pos', 'hapdaf', 'deriv_freq', file=out)
+print('#', 'phys_pos', 'gen_pos', 'hapdaf', 'deriv_freq', 'nr_sites', file=out)
 for tup in results:
     print(*tup, file=out)

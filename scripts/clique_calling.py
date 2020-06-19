@@ -253,6 +253,7 @@ if __name__ == "__main__":
     else:
         # simulation
         gr_cols = ['indiv_1', 'start', 'end']
+        
     stats_data = (all_male_dist_twice
             .groupby(gr_cols)
             .apply(window_stats)

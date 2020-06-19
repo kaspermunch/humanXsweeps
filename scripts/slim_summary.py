@@ -46,10 +46,10 @@ for dir_path in args.sweep_data_dir.iterdir():
     simulation, selection_percent, replication =  dir_path.name.rsplit('_', maxsplit=2)
 
 
-    demography, x_auto_ratio, rec_rate_per_gen, chrom, sweep_type, sweep_start, selcoef, replication = \
+    demography, size_reduction, rec_rate_per_gen, chrom, sweep_type, sweep_start, selcoef, replication = \
             dir_path.name.split('_')
 
-    x_auto_ratio = float(x_auto_ratio) / 100
+    size_reduction = float(size_reduction) / 100
     rec_rate_per_gen = float(rec_rate_per_gen) / 1e12
     sweep_start = int(sweep_start)
     selcoef = float(selcoef) / 100
@@ -65,8 +65,6 @@ for dir_path in args.sweep_data_dir.iterdir():
          
             sweep_data = pandas.read_hdf(str(file_path))
 
-            sweep_data.to_hdf('test.hdf', 'df', format='table', mode='w')
-            
             df = (sweep_data
                     .assign(swept=lambda df: df.swept.astype(int)) # groupby does not reliably sum booleans (return False when less than two are True)
                     .groupby(['start', 'end'])#['swept']
@@ -76,7 +74,8 @@ for dir_path in args.sweep_data_dir.iterdir():
                     .reset_index()
                     )
             df['demography'] = demography
-            df['x_auto_ratio'] = x_auto_ratio
+            df['chrom'] = chrom
+            df['size_reduction'] = size_reduction
             df['rec_rate_per_gen'] = rec_rate_per_gen
             df['sweep_start'] = sweep_start
             df['sweep_type'] = sweep_type
