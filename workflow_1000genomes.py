@@ -205,7 +205,7 @@ g1000_female_haplotype_missing_data_windows_file = os.path.join(g1000_female_hap
 g = gwf.target("g1000_count_called_females", 
                inputs=g1000_female_haplotype_files, 
                outputs=[g1000_female_haplotype_missing_data_windows_file], 
-               memory='8g', walltime='24:00:00') << """
+               memory='16g', walltime='24:00:00') << """
 
 source ./scripts/conda_init.sh
 conda activate simons
@@ -483,7 +483,7 @@ def hapdaf_genetic(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file)
     Computes 
     """
 
-    options = {'memory': '1g',
+    options = {'memory': '8g',
                'walltime': '10:00:00',
               } 
 
@@ -502,12 +502,12 @@ def hapdaf_genetic(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file)
     
     return [vcf_file, indiv_file, ancestral_file, rec_map_file], [out_file], options, spec
 
-def hapdaf_physical(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file):
+def hapdaf_physical(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file, window_size):
     """
     Computes 
     """
 
-    options = {'memory': '1g',
+    options = {'memory': '8g',
                'walltime': '10:00:00',
               } 
 
@@ -518,9 +518,9 @@ def hapdaf_physical(vcf_file, indiv_file, ancestral_file, rec_map_file, out_file
     source /com/extra/vcftools/0.1.14/load.sh
     vcftools --gzvcf {vcf_file} --keep {indiv_file} --remove-indels --remove-filtered-all \
         --max-alleles 2 --recode --recode-INFO-all --stdout | python scripts/hapdaf.py \
-        --vcf stdin --ancestral {ancestral_file} --window 200000 --outfile {out_file}
+        --vcf stdin --ancestral {ancestral_file} --window {window_size} --outfile {out_file}
 
-    """.format(vcf_file=vcf_file, indiv_file=indiv_file, ancestral_file=ancestral_file, out_file=out_file)
+    """.format(vcf_file=vcf_file, indiv_file=indiv_file, ancestral_file=ancestral_file, out_file=out_file, window_size=window_size)
     
     return [vcf_file, indiv_file, ancestral_file, rec_map_file], [out_file], options, spec
 
@@ -547,12 +547,14 @@ female_indiv_file = modpath('non_afr_females.txt', parent=g1000_hapdaf_dir)
 # with open(male_indiv_file, 'w') as f:
 #     print('\n'.join(male_nonafr), file=f)
 
+hapdaf_window_size = 200000
 g1000_hapdaf_files = list()
 for chrom, vcf_file in g1000_vcf_files.items():
 
     ancestral_file = '/home/kmt/simons/faststorage/data/1000Genomes/ancestral_alignmens/human_ancestor_GRCh37_e59/human_ancestor_{}.fa'.format(chrom)
     rec_map_file = 'data/plink_maps/plink.GRCh37.map/plink.chr{}.GRCh37.map'.format(chrom)
-    out_file = modpath('hapdaf_physical_{}.txt'.format(chrom), parent=g1000_hapdaf_dir)
+    out_file = modpath('hapdaf_physical_{}_{}.txt'.format(hapdaf_window_size, chrom), parent=g1000_hapdaf_dir)
     g1000_hapdaf_files.append(out_file)
 
-    gwf.target_from_template('hapdaf_{}'.format(chrom), hapdaf_physical(vcf_file, female_indiv_file, ancestral_file, rec_map_file, out_file))
+    gwf.target_from_template('hapdaf_{}_{}'.format(hapdaf_window_size, chrom), hapdaf_physical(vcf_file, 
+        female_indiv_file, ancestral_file, rec_map_file, out_file, hapdaf_window_size))
