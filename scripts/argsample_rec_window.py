@@ -13,6 +13,7 @@ df = df.loc[(df.chrom == chrom) & (df.end > start) & (df.start < end)]
 df.loc[df.index[0], 'start'] = start
 df.loc[df.index[-1], 'end'] = end
 
+# offset to zero before dowing windows
 df['start'] -= start
 df['end'] -= start
 
@@ -29,6 +30,10 @@ means_df = mean_rate(df)
 
 nr_nans = means_df.mean_rate.isnull().sum()
 assert nr_nans == 0, nr_nans
+
+# offset back
+means_df['start'] += start
+means_df['end'] += start
 
 means_df.to_csv(output_file, sep='\t', index=False, header=False, na_rep='nan')
 

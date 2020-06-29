@@ -3,6 +3,24 @@ import os, re, sys
 import numpy as np
 from subprocess import PIPE, Popen
 
+
+sys.path.append('./scripts')
+sys.path.append('./notebooks')
+
+import simons_meta_data
+import hg19_chrom_sizes
+
+
+gwf = Workflow(defaults={'account': 'simons'})
+
+
+#################################################################################
+# Load meta data
+#################################################################################
+
+individuals, populations, regions = simons_meta_data.get_meta_data()
+
+
 gwf = Workflow()
 
 def modpath(p, parent=None, base=None, suffix=None):
@@ -23,13 +41,48 @@ def modpath(p, parent=None, base=None, suffix=None):
     return new_path
 
 
+# def arg_sites_file(start, end, sites_file, fasta_files):
+def arg_sites_file(start, end, sites_file, fasta_files):
+
+    inputs = fasta_files
+
+    outputs = {'sites_file': sites_file}
+    options = {
+        'memory': '4g',
+        'walltime': '01:00:00'
+    }
+
+    spec = f'''
+    mkdir -p {os.path.dirname(sites_file)}
+    python scripts/argsample_sites_file.py X {start} {end} {sites_file} {" ".join(fasta_files)}
+    '''
+
+    return AnonymousTarget(inputs=inputs, outputs=outputs, options=options, spec=spec)
+
+
+def arg_recomb_file(recomb_map, start, end, recomb_file):
+    inputs = [recomb_map]
+    outputs = {'recomb_file': recomb_file}
+    options = {
+        'memory': '4g',
+        'walltime': '01:00:00'
+    }
+
+    spec = f'''
+    mkdir -p {os.path.dirname(recomb_file)}
+    python scripts/argsample_rec_window.py {recomb_map} chrX {start} {end} {recomb_file}
+    '''
+    
+    return AnonymousTarget(inputs=inputs, outputs=outputs, options=options, spec=spec)
+
+
 def argsample(sites_file, times_file, popsize_file, recomb_file, bed_file):
 
     output_dir = os.path.dirname(bed_file)
     arg_sample_base_name = modpath(bed_file, suffix='')
     log_file = modpath(arg_sample_base_name, suffix='.log')
 
-    inputs = {'sites_file': sites_file}
+    inputs = {'sites_file': sites_file, 'recomb_file': recomb_file}
     outputs = {'bed_file': bed_file, 'log_file': log_file}
     options = {
         'memory': '40g',
@@ -42,13 +95,13 @@ def argsample(sites_file, times_file, popsize_file, recomb_file, bed_file):
             --times-file {times_file} \
             --popsize-file {popsize_file} \
             --recombmap {recomb_file} \
-            -m 1.2e-8 \
+            -m 1.247e-08 \
             -c 25 \
-            -n 3000 \
+            -n 300 \
             --overwrite \
             -o {arg_sample_base_name} \
     && \
-    ../../software/argweaver/bin/smc2bed-all {arg_sample_base_name}
+    ./argweaver/bin/smc2bed-all {arg_sample_base_name}
     '''
 
     return AnonymousTarget(inputs=inputs, outputs=outputs, options=options, spec=spec)
@@ -65,17 +118,12 @@ def make_transition_matrices_from_argweaver(selection_coef, arg_weaver_log_file)
     options = {'memory': '16g', 'walltime': '5-00:00:00'}
 
     spec = f'''
-
     mkdir -p {path}
     ORIGDIR=`pwd`
     cd {path}
 
-    python $ORIGDIR/../../software/clues/make_transition_matrices_from_argweaver.py 10000 {selection_coef} \
-        $ORIGDIR/{arg_weaver_log_file} {output_file} --breaks 0.95 0.025 --debug
-
-    # python $ORIGDIR/../../software/clues/make_transition_matrices_from_argweaver.py 10000 {selection_coef} \
-    #     $ORIGDIR/{arg_weaver_log_file} {output_file} --debug        
-
+    python $ORIGDIR/clues/make_transition_matrices_from_argweaver.py 10000 {selection_coef} \
+        $ORIGDIR/{arg_weaver_log_file} {output_file} --breaks 0.95 0.025 --debug    
     '''
     return AnonymousTarget(inputs=inputs, outputs=outputs, options=options, spec=spec)
 
@@ -96,46 +144,12 @@ def clues(bed_file, sites_file, clues_output_file, cond_trans_matrix_file, snp_p
 
     spec = f'''        
     mkdir -p {clues_dir}
-
     arg-summarize -a {bed_file} -r {chrom}:{snp_pos}-{snp_pos} -l {log_file} -E > {trees_file} \
     && \
-    python ../../software/clues/clues.py {trees_file} {cond_trans_matrix_file} {sites_file} {derived_freq} --posn {snp_pos} \
+    python ./clues/clues.py {trees_file} {cond_trans_matrix_file} {sites_file} {derived_freq} --posn {snp_pos} \
         --derivedAllele {derived_allele} --noAncientHap --approx 10000 --thin 10 --burnin 100 --output {clues_output_base_name}
     '''
 
-    return AnonymousTarget(inputs=inputs, outputs=outputs, options=options, spec=spec)
-
-
-# def arg_sites_file(start, end, sites_file, fasta_files):
-def arg_sites_file(start, end, sites_file, fasta_files):
-
-    inputs = fasta_files
-
-    outputs = {'sites_file': sites_file}
-    options = {
-        'memory': '4g',
-        'walltime': '01:00:00'
-    }
-
-    spec = f'''
-    python scripts/arg_sites_file.py {start} {end} {sites_file} {" ".join(fasta_files)}
-    '''
-
-    return AnonymousTarget(inputs=inputs, outputs=outputs, options=options, spec=spec)
-
-
-def arg_recomb_file(recomb_map, start, end, recomb_file):
-    inputs = [recomb_map]
-    outputs = {'recomb_file': recomb_file}
-    options = {
-        'memory': '4g',
-        'walltime': '01:00:00'
-    }
-
-    spec = f'''
-
-    '''
-    
     return AnonymousTarget(inputs=inputs, outputs=outputs, options=options, spec=spec)
 
 
@@ -172,47 +186,47 @@ def get_snps(freq_data_file, chrom, window_start, window_end, min_freq, nr_snps)
 
 arg_sample_times_file = 'data/tennessen_times_fine.txt'
 arg_sample_popsize_file = 'data/tennessen_popsize_fine.txt'
-decode_recomb_map_file = 'data/decode_10kb/SexAveraged.bw.bedGraph'
+decode_recomb_map_file = 'data/decode_hg38_sexavg_per_gen_lifted_tohg19_chrX.tsv'
 
 freq_data_file = 'steps/clues/derived_freq_info_WestEurasia.h5'
 
-
-west_eur_fasta_files = ['steps/male_x_haploids/{}-A.fa'.format(x) for x in ['S_Basque-1', 'S_French-1']]
+individuals, populations, regions = simons_meta_data.get_meta_data()
+west_eur_fasta_files = ['steps/male_x_haploids/{}-A.fa'.format(x) for x in regions['WestEurasia'] if individuals[x]['Genetic sex assignment'] == 'XY']
 
 # small run to get 
-window_start, window_end = 10000000, 10100000
+window_start, window_end = 29500000, 30500000
 
 # make sites file
-sites_task = gwf.target_from_template(
-    name=f'sites_{window_start}_{window_end}_dummy',
+dummy_sites_task = gwf.target_from_template(
+    name=f'dummy_sites_{window_start}_{window_end}',
     template=arg_sites_file(
         start=window_start,
         end=window_end,
-        sites_file=f'steps/clues/dummy_{window_start}_{window_end}.sites',
+        sites_file=f'steps/clues/dummy/dummy_{window_start}_{window_end}.sites',
         fasta_files=west_eur_fasta_files
     )
 )
 
 # get recombination file
-recomb_task = gwf.target_from_template(
-    name=f'rec_{window_start}_{window_end}_dummy',
+dummy_recomb_task = gwf.target_from_template(
+    name=f'dummy_rec_{window_start}_{window_end}',
     template=arg_recomb_file(
         recomb_map=decode_recomb_map_file,
         start=window_start,
         end=window_end,
-        recomb_file=f'steps/clues/dummy_{window_start}_{window_end}.rec'
+        recomb_file=f'steps/clues/dummy/dummy_{window_start}_{window_end}.rec'
     )
 )
 
 # run argsample && smc2bed-all
-argsample_target = gwf.target_from_template(
-    name=f'args_{window_start}_{window_end}_dummy',
+dummy_argsample_target = gwf.target_from_template(
+    name=f'dummy_args_{window_start}_{window_end}',
     template=argsample(
-        sites_file=sites_task.outputs['sites_file'], 
+        sites_file=dummy_sites_task.outputs['sites_file'], 
         times_file=arg_sample_times_file, 
         popsize_file=arg_sample_popsize_file, 
-        recomb_file=recomb_task.outputs['recomb_file'], 
-        bed_file=f'steps/clues/dummy_{window_start}_{window_end}.bed'
+        recomb_file=dummy_recomb_task.outputs['recomb_file'], 
+        bed_file=f'steps/clues/dummy/dummy_{window_start}_{window_end}.bed'
     )
 )
 
@@ -222,7 +236,7 @@ selection_coeficients = np.logspace(-5, np.log10(0.5), 50)
 trans_task_list = list()
 for i, sel_coef in enumerate(selection_coeficients):
     task = gwf.target_from_template(f'trans_mat_{i}', 
-        make_transition_matrices_from_argweaver(sel_coef, argsample_target.outputs['log_file']))
+        make_transition_matrices_from_argweaver(sel_coef, dummy_argsample_target.outputs['log_file']))
     trans_task_list.append(task)
 
 # all transition matrix files:
@@ -249,11 +263,11 @@ freqs = '0.02 0.04 0.06 0.08 0.1 0.12 0.14 0.16 0.18 0.2 0.22 0.24 0.26 0.28 0.3
 #freqs = ' '.join([str(round(x, 2)) for x in np.linspace(0.05, 1, 20)])
 #freqs = '0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 1.0'
 #freqs = '0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9'
-cond_trans_matrix_file = 'steps/trans/trans_tennesen_fine.hdf5'
+cond_trans_matrix_file = 'steps/clues/trans/trans_tennesen_fine.hdf5'
 cond_trans_matrix_file_no_suffix = modpath(cond_trans_matrix_file, suffix='')
 gwf.target('cond_matrices', inputs=trans_mat_files, outputs=[cond_trans_matrix_file], walltime='4-00:00:00', memory='36g') << f"""
-
-python ../../software/clues/conditional_transition_matrices.py {argsample_target.outputs['log_file']} steps/trans/matrices/ \
+mkdir -p {os.path.dirname(cond_trans_matrix_file)}
+python ./clues/conditional_transition_matrices.py {dummy_argsample_target.outputs['log_file']} steps/trans/matrices/ \
     --listFreqs {freqs} -o {cond_trans_matrix_file_no_suffix} --debug
 
 """
@@ -262,66 +276,68 @@ python ../../software/clues/conditional_transition_matrices.py {argsample_target
 
 
 
-# clues_windows = [[45000000,46400000],
-#                  [54000000,55400000]]
+clues_windows = [[45000000,46400000],
+                 [54000000,55400000]]
 
-# for window_start, window_end in clues_windows:
+for window_start, window_end in clues_windows:
 
-#     # make sites file
-#     sites_task = gwf.target_from_template(
-#         name=f'sites_{window_start}_{window_end}',
-#         template=arg_sites_file(
+    # make sites file
+    sites_task = gwf.target_from_template(
+        name=f'sites_{window_start}_{window_end}',
+        template=arg_sites_file(
+            start=window_start,
+            end=window_end,
+            sites_file=f'steps/clues/argsample/{window_start}_{window_end}/{window_start}_{window_end}.sites',
+            fasta_files=west_eur_fasta_files
+        )
+    )
 
-#             sites_file=f'steps/clues/{window_start}_{window_end}.sites'
-#         )
-#     )
+    # get recombination file
+    recomb_task = gwf.target_from_template(
+        name=f'rec_{window_start}_{window_end}',
+        template=arg_recomb_file(
+            recomb_map=decode_recomb_map_file,
+            start=window_start,
+            end=window_end,
+            recomb_file=f'steps/clues/argsample/{window_start}_{window_end}/{window_start}_{window_end}.rec'
+        )
+    )
 
-#     # get recombination file
-#     recomb_task = gwf.target_from_template(
-#         name=f'rec_{window_start}_{window_end}',
-#         template=arg_recomb_file(
-#             recomb_map=decode_recomb_map_file,
-#             start=window_start,
-#             end=window_end,
-#             recomb_file=f'steps/clues/{window_start}_{window_end}.rec'
-#         )
-#     )
+    for chain in range(1, 3):
 
-#     for chain in range(1, 3):
+        argsample_target = gwf.target_from_template(
+            name=f'args_{window_start}_{window_end}_{chain}',
+            template=argsample(
+                sites_file=sites_task.outputs['sites_file'], 
+                times_file=arg_sample_times_file, 
+                popsize_file=arg_sample_popsize_file, 
+                recomb_file=recomb_task.outputs['recomb_file'], 
+                bed_file=f'steps/clues/argsample/{window_start}_{window_end}/{window_start}_{window_end}_{chain}.bed'
+            )
+        )
 
-#         # run argsample && smc2bed-all
-#         argsample_target = gwf.target_from_template(
-#             name=f'args_{window_start}_{window_end}_{chain}',
-#             template=argsample(
-#                 sites_file=sites_task.outputs['sites_file'], 
-#                 times_file=arg_sample_times_file, 
-#                 popsize_file=arg_sample_popsize_file, 
-#                 recomb_file=recomb_task.outputs['recomb_file'], 
-#                 bed_file=f'steps/clues/{window_start}_{window_end}_{chain}.bed'
-#             )
-#         )
+        min_freq = 0.25
+        nr_snps = 100
 
-#         min_freq = 0.25
-#         nr_snps = 100
+        snps_start, snps_end = window_start + flank, window_end - flank
+        snp_list = get_snps(freq_data_file, 'X', snps_start, snps_end, min_freq, nr_snps)
 
-#         snps_start, snps_end = window_start + flank, window_end - flank
-#         snp_list = get_snps(freq_data_file, 'X', snps_start, snps_end, min_freq, nr_snps)
-
-#         clues_task_list = list()
-#         for chrom, snp_pos, derived_allele, derived_freq in snp_list:
-#             clues_task = gwf.target_from_template(
-#                 name=f'clues_{window_start}_{window_end}_{chain}_{snp_pos}',
-#                 template=clues(
-#                     bed_file=argsample_target.outputs['bed_file'], 
-#                     sites_file=sites_task.outputs['sites_file'], 
-#                     clues_output_file = modpath(argsample_target.outputs['bed_file'], suffix=('.bed', f'_{snp_pos}.h5')),
-#                     cond_trans_matrix_file=arg_sample_popsize_file, 
-#                     snp_pos=snp_pos, chrom=chrom, win_start=window_start, win_end=window_end, 
-#                     derived_allele=derived_allele, derived_freq=derived_freq
-#                 )
-#             )
-#             clues_task_list.append(clues_task)
-#         clues_files = [output for task in clues_task_list for output in task.outputs]
+        clues_task_list = list()
+        for chrom, snp_pos, derived_allele, derived_freq in snp_list:
+            clues_task = gwf.target_from_template(
+                name=f'clues_{window_start}_{window_end}_{chain}_{snp_pos}',
+                template=clues(
+                    bed_file=argsample_target.outputs['bed_file'], 
+                    sites_file=sites_task.outputs['sites_file'], 
+                    clues_output_file = modpath(argsample_target.outputs['bed_file'], 
+                        suffix=('.bed', f'_{snp_pos}.h5'), parent=f'steps/clues/clues'),
+                    cond_trans_matrix_file=arg_sample_popsize_file, 
+                    snp_pos=snp_pos, chrom=chrom, win_start=window_start, win_end=window_end, 
+                    derived_allele=derived_allele, derived_freq=derived_freq
+                )
+            )
+            clues_task_list.append(clues_task)
+        clues_files = [output for task in clues_task_list for output in task.outputs]
 
 
 
