@@ -118,19 +118,27 @@ plots
 data
 sandbox
 
-# other dirs to ignore
 
+slim
+old_slim
+
+# other dirs to ignore
 argweaver/
+old_argweaver_installed_globally/
+clues/
 ctools/
 kwarg/
-slim
+SLiM/
 hapdaf/
 ohana/
+_*
 
 .DS_Store
 ._*
 .gwf*
 .vscode/
+
+
 
 GenomicWindows/
 Neanderthal_mask_problem.txt
