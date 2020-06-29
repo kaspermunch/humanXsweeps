@@ -12,7 +12,6 @@ from pathlib import Path
 def modpath(p, parent=None, base=None, suffix=None):
     par, name = os.path.split(p)
     name_no_suffix, suf = os.path.splitext(name)
-#    if suffix is not None:
     if type(suffix) is str:
         suf = suffix
     if parent is not None:
@@ -20,7 +19,6 @@ def modpath(p, parent=None, base=None, suffix=None):
     if base is not None:
         name_no_suffix = base
 
-    # return os.path.join(par, name_no_suffix + suf)
     new_path = os.path.join(par, name_no_suffix + suf)
     if type(suffix) is tuple:
         assert len(suffix) == 2
@@ -493,7 +491,7 @@ def argeaver_window_analysis(input_fasta_file, output_file):
         INPUTBASENAMENOSUFFIX=${{INPUTBASENAME%.*}}
         OUTPUTPREFIX=$JOBDIR/${{INPUTBASENAMENOSUFFIX}}_samples_$CHAIN
 
-        arg-sample --fasta $INPUTFILE \
+        ~/usr/local/bin/arg-sample --fasta $INPUTFILE \
             --popsize 10000 --recombrate 1.6e-8 \
             --mutrate 1.8e-8 --ntimes 20 --maxtime 200e3 \
             --randseed $CHAIN \
@@ -514,7 +512,7 @@ def argeaver_window_analysis(input_fasta_file, output_file):
                 BEDFILE=${{SMCFILE%.*}}.bed.gz
                 STATSFILE=${{SMCFILE%.*}}.stats
                 smc2bed --times $OUTPUTPREFIX.times --sample $SAMPLENR $SMCFILE | sort-bed - | gzip > $BEDFILE
-                arg-summarize -a $BEDFILE --time-file $OUTPUTPREFIX.times -E -T -B -R -K -H -F -P -C > $STATSFILE
+                ~/usr/local/bin/arg-summarize -a $BEDFILE --time-file $OUTPUTPREFIX.times -E -T -B -R -K -H -F -P -C > $STATSFILE
             done
 
         fi
@@ -831,8 +829,8 @@ def compute_tree_stats(input_table_file, output_hdf_file, component_hdf_file, co
 def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, sweep_start, demography,
  chrom, reduction, total_sim_generations, slim_tree_file, slim_dist_file, slim_sites_file):
 
-    options = {'memory': '8g',
-               'walltime': '05:00:00'
+    options = {'memory': '16g',
+               'walltime': '3:00:00'
               } 
 
     spec = """
