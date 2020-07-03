@@ -20,6 +20,9 @@ parser.add_argument("--end",
 parser.add_argument("--nrsnps",
                   type=int,
                   help="Number of SNPs to pick in window")
+parser.add_argument("--maxsnps",
+                  type=int,
+                  help="Pick at most this number of SNPs to pick in window")
 parser.add_argument("--minfreq",
                   type=float,
                   default=0,
@@ -35,9 +38,9 @@ parser.add_argument("derived_info_file",
 parser.add_argument("chrom",
                   type=str,
                   help="chromosome name (without 'chr' in front)")
-parser.add_argument("pop",
-                  type=str,
-                  help="Abreviation for 1000 genomes population.")
+# parser.add_argument("pop",
+#                   type=str,
+#                   help="Abreviation for 1000 genomes population.")
 parser.add_argument("output_file_name",
                   type=str,
                   help="Output file")
@@ -47,7 +50,10 @@ args = parser.parse_args()
 if args.snppos and args.minfreq:
     print("Do not use --snppos with --minfreq")
     sys.exit()
-if args.snppos and any([args.start, args.end, args.nrsnps]):
+if args.nrsnps and args.maxsnps:
+    print("Do not use --nrsnps with other --maxsnps")
+    sys.exit()
+if args.snppos and any([args.start, args.end, args.nrsnps, args.maxsnps]):
     print("Do not use --snppos with other arguments")
     sys.exit()
 if bool(args.start) != bool(args.end):
@@ -62,9 +68,16 @@ else:
 df = pd.read_hdf(args.derived_info_file, key='df', where=[query])
 df.insert(0, 'chrom', args.chrom)
 
-if args.nrsnps:
+if args.maxsnps:
+    all_snps = len(df)
+    step = all_snps // args.maxsnps
+    if step > 0:
+        df = df.iloc[0:step*args.maxsnps:step]
+    assert len(df) <= args.maxsnps
+elif args.nrsnps:
     all_snps = len(df)
     step = all_snps // args.nrsnps
+    assert step > 0
     df = df.iloc[0:step*args.nrsnps:step]
     assert len(df) == args.nrsnps
 
