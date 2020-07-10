@@ -28,12 +28,21 @@ def mean_rate(df):
 
 means_df = mean_rate(df)
 
+print(means_df.loc[means_df.mean_rate.isnull()])
+
 nr_nans = means_df.mean_rate.isnull().sum()
-assert nr_nans == 0, nr_nans
+assert nr_nans / len(means_df) <= 0.2, nr_nans
+
+# 
+means_df.loc[means_df.mean_rate.isnull()] = means_df.mean_rate.mean()
 
 # offset back
 means_df['start'] += start
 means_df['end'] += start
 
+means_df['start'] = means_df['start'].astype('int32')
+means_df['end'] = means_df['end'].astype('int32')
+
 means_df.to_csv(output_file, sep='\t', index=False, header=False, na_rep='nan')
 
+# WHAT DO DO WITH REGIONS THAT DOES MAP TO X IN HG38
