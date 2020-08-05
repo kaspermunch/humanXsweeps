@@ -48,9 +48,10 @@ TOTAL_GEN {
 
 complete_sweep = r'''
 SWEEP_START late() {
+	sim.treeSeqOutput("TMPDIR/slim_" + simID + ".trees");
+
 	target = sample(p1.genomes, 1);
 	target.addNewDrawnMutation(m2, 5e6);
-	sim.treeSeqOutput("TMPDIR/slim_" + simID + ".trees");
 }
 SWEEP_START: late() {
 	if (sim.countOfMutationsOfType(m2) == 0) {
@@ -60,17 +61,65 @@ SWEEP_START: late() {
 		} else {
 			cat(simID + ": LOST - RESTARTING\n");
 			sim.readFromPopulationFile("TMPDIR/slim_" + simID + ".trees");
-			setSeed(rdunif(1, 0, asInteger(2^32) - 1));
+			setSeed(rdunif(1, 0, asInteger(2^62) - 1));
+
+			target = sample(p1.genomes, 1);
+			target.addNewDrawnMutation(m2, 5e6);
 		}
 	}
 }
 '''
 
+# partial_sweep = r'''
+# SWEEP_START late() {
+# 	sim.treeSeqOutput("TMPDIR/slim_" + simID + ".trees");
+
+# 	target = sample(p1.genomes, 1);
+# 	target.addNewDrawnMutation(m2, 5e6);
+# }
+# SWEEP_START:SWEEP_ESTABLISHED late() {
+# 	mut = sim.mutationsOfType(m2);
+# 	if (size(mut) == 1)
+# 	{
+# 		if (sim.mutationFrequencies(NULL, mut) > 0.5)
+# 		{
+# 			cat(simID + ": ESTABLISHED\n");
+# 			sim.deregisterScriptBlock(self);
+# 		}
+# 	}
+# 	else
+# 	{
+# 		cat(simID + ": LOST – RESTARTING\n");
+# 		sim.readFromPopulationFile("TMPDIR/slim_" + simID + ".trees");
+#  		setSeed(rdunif(1, 0, asInteger(2^62) - 1)); 	
+
+# 		target = sample(p1.genomes, 1);
+# 		target.addNewDrawnMutation(m2, 5e6);	
+# 	}
+# }
+# SWEEP_ESTABLISHED: late() {
+# 	mut = sim.mutationsOfType(m2);
+# 	if (size(mut) == 1)
+# 	{
+# 		if (sim.mutationFrequencies(NULL, mut) <= 0.5)
+# 		{
+# 			cat(simID + ": LOST – RESTARTING\n");
+# 			sim.readFromPopulationFile("TMPDIR/slim_" + simID + ".trees");
+# 			setSeed(rdunif(1, 0, asInteger(2^62) - 1)); 	
+
+# 			target = sample(p1.genomes, 1);
+# 			target.addNewDrawnMutation(m2, 5e6);	
+# 		}
+# 	}
+# }
+# '''
+
 partial_sweep = r'''
 SWEEP_START late() {
+	sim.treeSeqOutput("TMPDIR/slim_" + simID + ".trees");
+
 	target = sample(p1.genomes, 1);
 	target.addNewDrawnMutation(m2, 5e6);
-	sim.treeSeqOutput("TMPDIR/slim_" + simID + ".trees");
 }
 SWEEP_START: late() {
 	mut = sim.mutationsOfType(m2);
@@ -86,8 +135,10 @@ SWEEP_START: late() {
 	{
 		cat(simID + ": LOST – RESTARTING\n");
 		sim.readFromPopulationFile("TMPDIR/slim_" + simID + ".trees");
-		setSeed(rdunif(1, 0, asInteger(2^32) - 1));
-		
+ 		setSeed(rdunif(1, 0, asInteger(2^62) - 1)); 	
+
+		target = sample(p1.genomes, 1);
+		target.addNewDrawnMutation(m2, 5e6);	
 	}
 }
 '''
@@ -114,6 +165,7 @@ parser.add_argument("--recrate", type=float)
 parser.add_argument("--generationtime", type=int)
 parser.add_argument("--sweep", type=str, choices=['partial', 'complete', 'nosweep'])
 parser.add_argument("--sweepstart", type=int)
+parser.add_argument("--sweepestablished", type=int)
 parser.add_argument("--xdrive")
 parser.add_argument('--demography', nargs='+', type=str)
 parser.add_argument("--popsize", type=int)
@@ -156,8 +208,10 @@ for pair in args.demography:
 
 # add complete or partial sweep
 if args.sweep == 'partial':
+    # slurm_script += partial_sweep.replace('SWEEP_START', str(args.sweepstart)).replace('SWEEP_ESTABLISHED', str(args.sweepestablished))
     slurm_script += partial_sweep.replace('SWEEP_START', str(args.sweepstart))
 elif args.sweep == 'complete':
+    # slurm_script += complete_sweep.replace('SWEEP_START', str(args.sweepstart)).replace('SWEEP_ESTABLISHED', str(args.sweepestablished))
     slurm_script += complete_sweep.replace('SWEEP_START', str(args.sweepstart))
 
 # make positive selection act on X only in males
