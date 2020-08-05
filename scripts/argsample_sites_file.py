@@ -23,6 +23,9 @@ for name, fasta_file in zip(names, fasta_files):
 # offset positions window by start so they become genomic coordinates
 df.index += start
 
+# add one to zero based index to turn it into one-based snp coordinates
+df.index += 1
+
 with open(output_file, 'w') as f:
     print("NAMES\t" + "\t".join(names), file=f)
     print(f"REGION\t{chrom}\t{start}\t{end}", file=f)
