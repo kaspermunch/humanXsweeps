@@ -12,7 +12,7 @@ Create directory structure for analysis:
 
 This is the main py3 environment for scripts and jupyter analysis. You can create it like this:
 
-    conda create --name simons -c gwforg -c micknudsen -c etetoolkit -c anaconda -c conda-forge -c bioconda python=3 gwf gwf-utilization ete3 biopython ipyparallel jupyter jupyterlab matplotlib mpld3 nbconvert numpy pandas pytables scikit-learn scipy seaborn scikit-learn statsmodels pyfaidx scikit-bio mygene msprime openblas descartes basemap-data-hires basemap cartopy networkx
+    conda create --name simons -c gwforg -c micknudsen -c etetoolkit -c anaconda -c conda-forge -c bioconda python=3 gwf gwf-utilization ete3 biopython ipyparallel jupyter jupyterlab matplotlib mpld3 nbconvert numpy pandas pytables scikit-learn scipy seaborn scikit-learn statsmodels pyfaidx scikit-bio mygene msprime openblas descartes basemap-data-hires basemap cartopy networkx mygene psutil bitarray
 
     conda activate simons
 
