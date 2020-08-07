@@ -143,6 +143,19 @@ SWEEP_START: late() {
 }
 '''
 
+selection_episode = r'''
+SWEEP_START late() {
+	target = sample(p1.genomes, 1);
+	target.addNewDrawnMutation(m2, 5e6);
+}
+SELECTION_END late() {
+	m2muts = sim.mutationsOfType(m2);
+	for (index in seqAlong(m2muts))
+		m2muts[index].setSelectionCoeff(0.0);
+}
+'''
+
+
 drive = '''
 // only positive selection in males
 fitness(m3) {
@@ -163,8 +176,9 @@ parser.add_argument("--samples", type=int)
 parser.add_argument("--mutationrate", type=float)
 parser.add_argument("--recrate", type=float)
 parser.add_argument("--generationtime", type=int)
-parser.add_argument("--sweep", type=str, choices=['partial', 'complete', 'nosweep'])
+parser.add_argument("--sweep", type=str, choices=['partial', 'complete', 'nosweep', 'episode'])
 parser.add_argument("--sweepstart", type=int)
+parser.add_argument("--selectionend", type=int)
 parser.add_argument("--sweepestablished", type=int)
 parser.add_argument("--xdrive")
 parser.add_argument('--demography', nargs='+', type=str)
@@ -213,6 +227,9 @@ if args.sweep == 'partial':
 elif args.sweep == 'complete':
     # slurm_script += complete_sweep.replace('SWEEP_START', str(args.sweepstart)).replace('SWEEP_ESTABLISHED', str(args.sweepestablished))
     slurm_script += complete_sweep.replace('SWEEP_START', str(args.sweepstart))
+elif args.sweep == 'episode':
+    # slurm_script += complete_sweep.replace('SWEEP_START', str(args.sweepstart)).replace('SWEEP_ESTABLISHED', str(args.sweepestablished))
+    slurm_script += selection_episode.replace('SWEEP_START', str(args.sweepstart)).replace('SELECTION_END', str(args.selectionend))
 
 # make positive selection act on X only in males
 if args.xdrive:
