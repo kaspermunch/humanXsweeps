@@ -41,7 +41,7 @@ def notebook(notebook_file, html_file, prev_html_files, cores=1, memory='8g', wa
     source conda_init.sh
     conda activate simons
     {ipcluster}
-    jupyter nbconvert --to html --execute --ExecutePreprocessor.timeout=-1  --output-dir ./html {notebook}
+    jupyter nbconvert --to notebook --inplace --execute --ExecutePreprocessor.timeout=-1 {notebook}
     """.format(notebook=notebook_file, ipcluster=ipcluster_str)
 
     return [notebook_file]+prev_html_files, [html_file], options, spec
