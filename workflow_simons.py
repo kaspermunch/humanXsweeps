@@ -1437,7 +1437,7 @@ slim_min_clade_size_in_percent = int(round(0.25 * (nr_africans + nr_non_africans
 
 # generate combinations of parameters to run:
 
-# testing that autusome settings produce expected diversity:
+# testing that autosome settings produce expected diversity:
 autosome_params = list(itertools.product(
     ['A'], # chromosome X or A for autosome
     ['standard'], # demography
@@ -1450,7 +1450,8 @@ autosome_params = list(itertools.product(
 # neutral simulations:
 neutral_params = list(itertools.product(
     ['X'], # chromosome X or A for autosome
-    ['standard', 'truncated'], # demography
+    # ['standard', 'truncated'], # demography
+    ['standard'], # demography
     size_reductions,
     sexavg_rec_rates_per_gen,
     ['nosweep'], [0], [0], # type, sweep_generations, sel_coeficients
@@ -1465,9 +1466,13 @@ sweep_params = list(itertools.product(
     sexavg_rec_rates_per_gen,
     ['complete', 'partial'], sweep_generations, [0.01, 0.1],
     [slim_min_clade_size_in_percent], #  clade size in percent
-    [10] # nr replicates
+    [0] # nr replicates
 ))
 params = neutral_params + autosome_params + sweep_params
+
+
+## ADD 'episode' TO SIMULATIONS AND REMEMBER --selectionend  #####################
+
 
 # import pprint
 # pprint.pprint(list(params))

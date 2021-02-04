@@ -84,9 +84,10 @@ def argsample(sites_file, times_file, popsize_file, recomb_file, bed_file):
     arg_sample_base_name = modpath(bed_file, suffix='')
     # TODO should be: arg_sample_base_name = modpath(bed_file, suffix=('.bed.gz', '')
     log_file = modpath(arg_sample_base_name, suffix='.log')
+    tabix_file = modpath(arg_sample_base_name, suffix='.bed.gz.tbi')
 
     inputs = {'sites_file': sites_file, 'recomb_file': recomb_file}
-    outputs = {'bed_file': bed_file, 'log_file': log_file}
+    outputs = {'bed_file': bed_file, 'log_file': log_file, 'tabix_file': tabix_file}
     options = {
         'memory': '40g',
         'walltime': '14-00:00:00'
@@ -199,8 +200,25 @@ decode_recomb_map_file = 'data/decode_hg38_sexavg_per_gen_lifted_tohg19_chrX.tsv
 
 freq_data_file = 'steps/clues/derived_freq_info_WestEurasia.h5'
 
-individuals, populations, regions = simons_meta_data.get_meta_data()
-west_eur_fasta_files = ['steps/male_x_haploids/{}-A.fa'.format(x) for x in regions['WestEurasia'] if individuals[x]['Genetic sex assignment'] == 'XY']
+#individuals, populations, regions = simons_meta_data.get_meta_data()
+
+sample_fasta_files = ['steps/male_x_haploids/{}-A.fa'.format(x) for x in regions['WestEurasia'] if individuals[x]['Genetic sex assignment'] == 'XY']
+
+
+
+
+
+# # set of europeans to include (must be same as that in compile_clues_snp_info.py)
+# subset_of_europeans = ['B_Crete-2', 'B_French-3', 'B_Sardinian-3', 'S_Basque-1', 'S_Bulgarian-1', 'S_Bulgarian-2', 
+#                        'S_Czech-2', 'S_English-1', 'S_Estonian-1', 'S_Estonian-2', 'S_Finnish-3', 'S_French-1', 
+#                        'S_Greek-1', 'S_Greek-2', 'S_Hungarian-2', 'S_Polish-1', 'S_Saami-2', 'S_Sardinian-1', 
+#                        'S_Spanish-1', 'S_Tuscan-2']
+# sample_fasta_files = [f for f in sample_fasta_files if f in ]
+
+
+
+
+
 
 # small run to get 
 window_start, window_end = 29500000, 30500000
@@ -212,7 +230,7 @@ dummy_sites_task = gwf.target_from_template(
         start=window_start,
         end=window_end,
         sites_file=f'steps/clues/dummy/dummy_{window_start}_{window_end}.sites',
-        fasta_files=west_eur_fasta_files
+        fasta_files=sample_fasta_files
     )
 )
 
@@ -265,7 +283,7 @@ python ./clues/conditional_transition_matrices.py {dummy_argsample_target.output
 
 """
 
-extended_peak_regions_90 = pd.read_hdf('results/extended_peak_regions_90%.hdf')
+extended_peak_regions_90 = pd.read_hdf('results/extended_peak_regions_5e-05_25%_90%.hdf')
 
 arg_win_size = 1500000
 center_analyzed = 500000
@@ -282,7 +300,7 @@ for window_start, window_end in clues_windows:
             start=window_start,
             end=window_end,
             sites_file=f'steps/clues/argsample/{window_start}_{window_end}/{window_start}_{window_end}.sites',
-            fasta_files=west_eur_fasta_files
+            fasta_files=sample_fasta_files
         )
     )
 
@@ -298,7 +316,7 @@ for window_start, window_end in clues_windows:
     )
 
     min_freq = 0.25
-    nr_snps = 5
+    nr_snps = 20 # when made larger this needs to be multipla of the prev value to reuse prev snps
 
     snps_start, snps_end = window_start + flank, window_end - flank
     snp_list = get_snps(freq_data_file, 'X', snps_start, snps_end, min_freq, nr_snps)
@@ -334,9 +352,50 @@ for window_start, window_end in clues_windows:
         clues_files = [output for task in clues_task_list for output in task.outputs]
 
 
+        # Extract info from all clues files for each window
+        clues_csv_file_name = f'steps/clues/csv/clues_{window_start}_{window_end}_{chain}.csv'
+
+        clues_file_base_names = ' '.join([modpath(f, parent='') for f in clues_files])
+
+        gwf.target(f'clues_{window_start}_{window_end}_{chain}_csv', 
+            inputs=clues_files, outputs=[clues_csv_file_name], walltime='1:00:00', memory='1g') << f"""
+
+        mkdir -p {os.path.dirname(clues_csv_file_name)}
+        python scripts/extract_clues_info.py {clues_csv_file_name} steps/clues/clues {clues_file_base_names}
+        """
+
+# These clues runs kept dying. So I had to just touch them and handle empty h5 files when producing csv files:
+
+# clues_20500000_22000000_1_21036206       shouldrun      75.00% [1/0/0/3]
+# clues_20500000_22000000_2_21036206       shouldrun      75.00% [1/0/0/3]
+# clues_20500000_22000000_2_21479192       shouldrun      75.00% [1/0/0/3]
+# clues_35550000_37050000_1_36519431       shouldrun      75.00% [1/0/0/3]
+# clues_35550000_37050000_2_36519431       shouldrun      75.00% [1/0/0/3]
+# clues_72400000_73900000_1_73298899       shouldrun      75.00% [1/0/0/3]
+# clues_72400000_73900000_2_73298899       shouldrun      75.00% [1/0/0/3]
+# clues_76300000_77800000_1_77124388       shouldrun      75.00% [1/0/0/3]
+# clues_76300000_77800000_2_77124388       shouldrun      75.00% [1/0/0/3]
+# clues_132000000_133500000_1_132633596    shouldrun      75.00% [1/0/0/3]
+# clues_132000000_133500000_2_132633596    shouldrun      75.00% [1/0/0/3]
+
+# touch steps/clues/clues/20500000_22000000_1.bed_21036206.h5
+# touch steps/clues/clues/20500000_22000000_2.bed_21036206.h5
+# touch steps/clues/clues/20500000_22000000_2.bed_21479192.h5
+# touch steps/clues/clues/35550000_37050000_1.bed_36519431.h5
+# touch steps/clues/clues/35550000_37050000_2.bed_36519431.h5
+# touch steps/clues/clues/72400000_73900000_1.bed_73298899.h5
+# touch steps/clues/clues/72400000_73900000_2.bed_73298899.h5
+# touch steps/clues/clues/76300000_77800000_1.bed_77124388.h5
+# touch steps/clues/clues/76300000_77800000_2.bed_77124388.h5
+# touch steps/clues/clues/132000000_133500000_1.bed_132633596.h5
+# touch steps/clues/clues/132000000_133500000_2.bed_132633596.h5        
+        
+        
+        
+        
 
 
-
+# srun -A simons --mem-per-cpu 40g --time 4-00:00:00 arg-sample -s steps/sites_files/3_54250000_55750000_CEU.sites --times-file data/tennessen_times_fine.txt --popsize-file data/tennessen_popsize_fine.txt --recombmap steps/recomb_file/3_54250000_55750000.rec -m 1.247e-08 -c 25 -n 30000 -o steps/argsample/3_54250000_55750000_CEU_1/3_54250000_55750000_CEU  --resume
 
 
 # ################################################################################################
