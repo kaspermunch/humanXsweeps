@@ -68,6 +68,9 @@ else:
 df = pd.read_hdf(args.derived_info_file, key='df', where=[query])
 df.insert(0, 'chrom', args.chrom)
 
+# no missing data allowed
+df = df.loc[df.prop_missing == 0]
+
 if args.maxsnps:
     all_snps = len(df)
     step = all_snps // args.maxsnps

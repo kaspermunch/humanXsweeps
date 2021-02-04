@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 import msprime, pyslim
+import time
 
 import psutil
 process = psutil.Process(os.getpid())
@@ -50,7 +51,11 @@ complete_sweep = r'''
 SWEEP_START late() {
 	sim.treeSeqOutput("TMPDIR/slim_" + simID + ".trees");
 
-	target = sample(p1.genomes, 1);
+	target = sample(p1.genomes, 1);	
+	while (target.isNullGenome)
+	{
+		target = sample(p1.genomes, 1);	
+	} 
 	target.addNewDrawnMutation(m2, 5e6);
 }
 SWEEP_START: late() {
@@ -63,7 +68,11 @@ SWEEP_START: late() {
 			sim.readFromPopulationFile("TMPDIR/slim_" + simID + ".trees");
 			setSeed(rdunif(1, 0, asInteger(2^62) - 1));
 
-			target = sample(p1.genomes, 1);
+			target = sample(p1.genomes, 1);	
+			while (target.isNullGenome)
+			{
+				target = sample(p1.genomes, 1);	
+			} 
 			target.addNewDrawnMutation(m2, 5e6);
 		}
 	}
@@ -74,7 +83,12 @@ SWEEP_START: late() {
 # SWEEP_START late() {
 # 	sim.treeSeqOutput("TMPDIR/slim_" + simID + ".trees");
 
-# 	target = sample(p1.genomes, 1);
+
+	# target = sample(p1.genomes, 1);	
+	# while (target.isNullGenome)
+	# {
+	# 	target = sample(p1.genomes, 1);	
+	# } 
 # 	target.addNewDrawnMutation(m2, 5e6);
 # }
 # SWEEP_START:SWEEP_ESTABLISHED late() {
@@ -93,8 +107,12 @@ SWEEP_START: late() {
 # 		sim.readFromPopulationFile("TMPDIR/slim_" + simID + ".trees");
 #  		setSeed(rdunif(1, 0, asInteger(2^62) - 1)); 	
 
-# 		target = sample(p1.genomes, 1);
-# 		target.addNewDrawnMutation(m2, 5e6);	
+	# target = sample(p1.genomes, 1);	
+	# while (target.isNullGenome)
+	# {
+	# 	target = sample(p1.genomes, 1);	
+	# } 
+    # target.addNewDrawnMutation(m2, 5e6);	
 # 	}
 # }
 # SWEEP_ESTABLISHED: late() {
@@ -108,6 +126,10 @@ SWEEP_START: late() {
 # 			setSeed(rdunif(1, 0, asInteger(2^62) - 1)); 	
 
 # 			target = sample(p1.genomes, 1);
+	# while (target.isNullGenome)
+	# {
+	# 	target = sample(p1.genomes, 1);	
+	# } 
 # 			target.addNewDrawnMutation(m2, 5e6);	
 # 		}
 # 	}
@@ -119,6 +141,10 @@ SWEEP_START late() {
 	sim.treeSeqOutput("TMPDIR/slim_" + simID + ".trees");
 
 	target = sample(p1.genomes, 1);
+	while (target.isNullGenome)
+	{
+		target = sample(p1.genomes, 1);	
+	} 	
 	target.addNewDrawnMutation(m2, 5e6);
 }
 SWEEP_START: late() {
@@ -137,7 +163,11 @@ SWEEP_START: late() {
 		sim.readFromPopulationFile("TMPDIR/slim_" + simID + ".trees");
  		setSeed(rdunif(1, 0, asInteger(2^62) - 1)); 	
 
-		target = sample(p1.genomes, 1);
+		target = sample(p1.genomes, 1);	
+		while (target.isNullGenome)
+		{
+			target = sample(p1.genomes, 1);	
+		} 		
 		target.addNewDrawnMutation(m2, 5e6);	
 	}
 }
@@ -145,7 +175,11 @@ SWEEP_START: late() {
 
 selection_episode = r'''
 SWEEP_START late() {
-	target = sample(p1.genomes, 1);
+	target = sample(p1.genomes, 1);	
+	while (target.isNullGenome)
+	{
+		target = sample(p1.genomes, 1);	
+	} 	
 	target.addNewDrawnMutation(m2, 5e6);
 }
 SELECTION_END late() {
@@ -251,7 +285,7 @@ slurm_script_file.write(slurm_script)
 slurm_script_file.close()
 
 # run slim
-cmd = './slim {}'.format(slurm_script_file.name)
+cmd = './slim3.5/build/slim {}'.format(slurm_script_file.name)
 p = subprocess.Popen(cmd.split(), 
     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 stdout, stderr = p.communicate()
@@ -264,7 +298,8 @@ ts = pyslim.load(args.trees_file).simplify()
 # get nodes/chromosomes for female individuals:
 female_nodes = list()
 for ind in ts.individuals():
-    if pyslim.decode_individual(ind.metadata).sex == 0:
+    # if pyslim.decode_individual(ind.metadata).sex == 0:
+    if ind.metadata['sex'] == 0:
         female_nodes.extend(ind.nodes)
 
 # get the asmple ids among females chromosomes:

@@ -23,8 +23,23 @@ for region, indivs in regions.items():
         for indiv in indivs:
             if individuals[indiv]['Genetic sex assignment'] == 'XY':
                 included_individuals.append(indiv)
+
+
+
+# rename target region
+target_region = 'EuropeSubset'
+# only include this subset of individuals
+subset_of_europeans = ['B_Crete-2', 'B_French-3', 'B_Sardinian-3', 'S_Basque-1', 'S_Bulgarian-1', 'S_Bulgarian-2', 
+                       'S_Czech-2', 'S_English-1', 'S_Estonian-1', 'S_Estonian-2', 'S_Finnish-3', 'S_French-1', 
+                       'S_Greek-1', 'S_Greek-2', 'S_Hungarian-2', 'S_Polish-1', 'S_Saami-2', 'S_Sardinian-1', 
+                       'S_Spanish-1', 'S_Tuscan-2']
+included_individuals = [i for i in included_individuals if i in subset_of_europeans]
+
+
+print(target_region)
+print('\n'.join(included_individuals))
 print(len(included_individuals))
-assert 0
+
 fasta_files = ['steps/male_x_haploids/{}-A.fa'.format(x) for x in included_individuals]
 chimp_file = '../../data/cteam_lite_public3/FullyPublic/Chimp.fa'
 
@@ -102,5 +117,5 @@ for window in genome_window_iter(*fasta_files, window_size=1000000):
 
 
 pd.concat(df_list).to_hdf(hdf_file_name, key='df', mode='w', format='table', 
-    data_columns=['pos', 'derived_freq'], complevel=9, complib='blosc')
+    data_columns=['pos', 'derived_freq', 'prop_missing'], complevel=9, complib='blosc')
     
