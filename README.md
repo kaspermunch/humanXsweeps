@@ -52,6 +52,9 @@ Additional analysis of 1000 genomes
 
     gwf -f workflow_1000genomes.py run
 
+Additional analysis of WestEurasian individuals using Clues
+
+    gwf -f workflow_clues.py run
 
 ## Data analysis using jupyter notebooks
 
