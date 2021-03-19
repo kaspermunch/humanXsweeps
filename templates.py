@@ -262,6 +262,29 @@ def pi_for_pair_template(*args):
 
     return [f1, f2], [output_file_name], options, spec
 
+
+def pi_for_chrom_pair_template(*args):
+
+    f1, f2, binsize, chrom, indiv1, pseud1, indiv2, pseud2, output_file_name = args
+
+    options = {'memory': '4g',
+               'walltime': '11:00:00'
+               } 
+
+    spec = f'''
+
+        source ./scripts/conda_init.sh
+        conda activate simons
+    
+        mkdir -p steps/chr7_pwdiff
+        python scripts/pi_chrom_windows.py {f1} {f2} {binsize} {chrom} {indiv1} {pseud1} {indiv2} {pseud2} {output_file_name}
+
+    '''
+
+    return [f1, f2], [output_file_name], options, spec
+
+
+
 # compute pi for a pair of pseudohaploids
 def dist_for_x_pair_template(*args):
 
@@ -394,6 +417,21 @@ def extract_x(full_genome, only_x):
     """.format(full_genome=full_genome, only_x=only_x)
 
     return [full_genome], [only_x], options, spec
+
+
+def extract_7(full_genome, only_7): 
+
+    options = {'memory': '10g'}
+
+    spec = """
+
+    source ./scripts/conda_init.sh
+    conda activate simons
+    python scripts/extract_7.py {full_genome} {only_7}
+
+    """.format(full_genome=full_genome, only_7=only_7)
+
+    return [full_genome], [only_7], options, spec
 
 
 def mask_ampliconic_regions(unmasked_file, masked_file, ampl_regions_file):

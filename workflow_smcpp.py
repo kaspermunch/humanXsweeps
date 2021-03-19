@@ -45,7 +45,7 @@ for dedicated_indiv in dedicated_indiv_list:
 
     SAMPLES=`tail -n +2  ~/simons/faststorage/people/kmt/results/analyzed_individuals.csv | grep -v Africa | cut -f 1 -d ',' | grep -f - ~/simons/faststorage/data/metadata/nature18964-s2-fixed-genders.csv | cut -f 3 -d ';' | tr '\n' ',' | sed 's/.$//'`
 
-    singularity run terhorst/smcpp:latest vcf2smc --cores 4 --missing-cutoff {max_missing} -d {dedicated_indiv} {dedicated_indiv} steps/vcf/nonafr_analyzed_individuals_chr7.vcf.gz {smc_file_name} 7 nonAfr:$SAMPLES
+    singularity run docker://terhorst/smcpp:latest vcf2smc --cores 4 --missing-cutoff {max_missing} -d {dedicated_indiv} {dedicated_indiv} steps/vcf/nonafr_analyzed_individuals_chr7.vcf.gz {smc_file_name} 7 nonAfr:$SAMPLES
     """
 
 gwf.target(name='estimate',
@@ -66,7 +66,7 @@ gwf.target(name='plot',
     #  memory='16g'
      ) << f"""
 
-docker run --rm -v $PWD:/mnt terhorst/smcpp:latest plot -g 29 -c nonAfr_joint_demography.png model.final.json
+singularity run docker://terhorst/smcpp:latest plot -g 29 -c nonAfr_joint_demography.png model.final.json
 """
 
 

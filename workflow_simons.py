@@ -285,6 +285,102 @@ archaic_pseudohaploid_file_names = altai_pseudohaploid_file_names + denisova_pse
 
 
 #################################################################################
+# compute pwdiff between all male pseudohaplotypes in windows over masked chr7.
+# this is somthing I added late to be able to compute global pairwise diffs.
+# I needed this pi to compare to expected pi from the simulation demography.
+#################################################################################
+
+#####
+# first extract male chr7 A haplotypes (so we get as many haplotypes as X)
+######
+male_subset = list()
+for pop in sorted(pseudohaploid_file_names):
+    for file_name in pseudohaploid_file_names[pop]:
+        basename = os.path.basename(file_name).split('.')[0]
+        if basename.endswith('-A'):
+            if individuals[basename.replace('-A', '')]['Genetic sex assignment'] == 'XY':
+                male_subset.append(file_name)
+
+# dir for files
+male_7_haploids_dir = os.path.join(mydir, 'steps', 'male_7_haploids')
+if not os.path.exists(male_7_haploids_dir):
+    os.makedirs(male_7_haploids_dir)
+
+male_7_haploids = [modpath(x, parent=male_7_haploids_dir, suffix='') for x in male_subset]
+
+for i, (full_genome, only_7) in enumerate(zip(male_subset, male_7_haploids)):
+    gwf.target_from_template("extract_7_{}".format(i), 
+        extract_7(full_genome=str(full_genome), only_7=str(only_7)))
+
+#####
+# then compute pairwise diffs
+#####
+
+# size of windows for computing pi
+chr7_pwdiff_binsize = 100000
+    
+chr7_pwdiff_dir = os.path.join(mydir, 'steps', 'chr7_pwdiff')
+if not os.path.exists(chr7_pwdiff_dir):
+    os.makedirs(chr7_pwdiff_dir)
+
+chr7_pwdiff_file_names = list()
+
+#all_pseudo_haplodid_file_names = sum(pseudohaploid_file_names.values(), [])
+
+i = 0
+for file1, file2 in itertools.combinations(male_7_haploids, 2):
+
+    indiv1, pseud1 = re.search(r'/([^/]+)-([AB]).fa', str(file1)).groups() 
+    indiv2, pseud2 = re.search(r'/([^/]+)-([AB]).fa', str(file2)).groups() 
+
+    # we do not compare chromosome from the same 
+    # individul to avoid inbreeding arterfcts
+    if indiv1 == indiv2:
+        continue
+    
+    # open files for the pair of pseudohaploids to compare
+    f1 = modpath(file1, parent=male_7_haploids_dir)
+    f2 = modpath(file2, parent=male_7_haploids_dir)
+
+    output_base_name = '{}_{}_{}_{}_{}.pickle' .format(indiv1, pseud1, indiv2, pseud2, bp2str(chr7_pwdiff_binsize))
+    out_file_name = modpath(output_base_name, parent=chr7_pwdiff_dir)
+
+    chr7_pwdiff_file_names.append(out_file_name)
+
+    gwf.target_from_template('chr7_pwdiff_windows_{}'.format(i), 
+        pi_for_chrom_pair_template(str(f1), str(f2), chr7_pwdiff_binsize, '7', indiv1, pseud1, indiv2, pseud2, str(out_file_name)))
+
+    i += 1
+
+#####
+# then assemble pwdiff data set for chr7
+#####    
+
+# dir for files
+dist_store_dir = os.path.join(mydir, 'steps', 'chr7_pwdiff_stores')
+if not os.path.exists(dist_store_dir):
+    os.makedirs(dist_store_dir)
+
+#dist_store_base_names = ["dist_data_{}_{}".format(x, bp2str(dist_binsize)) for x in hg19_chrom_sizes.hg19_chrom_sizes.keys()]
+dist_store_base_names = ["dist_data_chr7_{}".format(bp2str(chr7_pwdiff_binsize))]
+dist_store_files = [modpath(x, parent=dist_store_dir, suffix='.store') for x in dist_store_base_names]
+
+g = gwf.target("build_chr7_pwdiff_datasets", inputs=chr7_pwdiff_file_names, outputs=dist_store_files, 
+    memory='150g', walltime='11:00:00') << """
+
+    source ./scripts/conda_init.sh
+    conda activate simons
+    python scripts/build_dist_datasets.py \
+        --dist-dir {dist_dir} \
+        --result-dir {dist_store_dir} \
+        --meta-data-dir {metadata_dir}
+
+""".format(dist_dir=chr7_pwdiff_dir, dist_store_dir=dist_store_dir, metadata_dir='/home/kmt/simons/faststorage/data/metadata')
+
+
+    
+    
+#################################################################################
 # compute pi in windows over masked genomes
 #################################################################################
 
