@@ -1395,6 +1395,9 @@ slim_tree_files = list()
 slim_dist_files = list()
 slim_dist_twice_files = list()
 slim_sites_files = list()
+slim_vcf_files = list()
+slim_ld_files = list()
+slim_freq_files = list()
 sweep_data_files = list()
 
 simulations_dir = os.path.join(mydir, 'steps', 'slim', 'simulations')
@@ -1428,45 +1431,7 @@ total_sim_generations = 200000
 #  (199724, 54500),
 #  (199896, 109000)]
 standard_demography = \
-[(1, 15784),
- (27586, 15784),
- (113793, 15782),
- (139655, 15784),
- (156896, 15784),
- (168965, 15784),
- (175862, 15784),
- (181034, 15784),
- (184482, 15784),
- (186551, 15784),
- (187931, 15784),
- (188965, 15784),
- (189791, 31228),
- (191896, 31254),
- (193620, 31254),
- (195172, 31254),
- (196481, 4022),
- (197413, 4019),
- (197931, 4016),
- (198275, 4016),
- (198412, 2420),
- (198500, 2902),
- (198627, 3644),
- (198755, 4578),
- (198882, 5747),
- (199010, 7216),
- (199137, 8665),
- (199213, 9831),
- (199279, 11052),
- (199344, 12420),
- (199410, 13960),
- (199475, 15692),
- (199541, 17635),
- (199606, 20754),
- (199672, 38224),
- (199737, 80654),
- (199803, 170176),
- (199868, 359059),
- (199934, 751097)]
+[]
 
 # pasted from nb_22_slim_simulations notebook:
 # standard_demography_truncated = \
@@ -1478,28 +1443,7 @@ standard_demography = \
 #  (197586, 3270),
 #  (198448, 4360)]
 standard_demography_truncated = \
-[(1, 15784),
- (27586, 15784),
- (113793, 15782),
- (139655, 15784),
- (156896, 15784),
- (168965, 15784),
- (175862, 15784),
- (181034, 15784),
- (184482, 15784),
- (186551, 15784),
- (187931, 15784),
- (188965, 15784),
- (189791, 31228),
- (191896, 31254),
- (193620, 31254),
- (195172, 31254),
- (196481, 4022),
- (197413, 4019),
- (197931, 4016),
- (198275, 4016),
- (198412, 2420),
- (198448, 2902)]
+[]
 
 # test demography for sanity checking
 test_demography = \
@@ -1518,7 +1462,7 @@ demographies = {
 }
 
 # African X/A ratio is 0.66 but is further reduce inside regions:
-x_auto_ratios = [0.66 * x for x in [1, 0.73]] # outside and inside regions
+x_auto_ratios = [0.65 * x for x in [1, 0.71]] # outside and inside regions
 
 # size reduction beyond 3/4 (slim takes care of the 3/4 book keeping):
 size_reductions = [x/0.75 for x in x_auto_ratios]  # outside and inside regions
@@ -1529,7 +1473,7 @@ sexavg_rec_rates_per_gen = [0.46e-8, # mean in regions
 
 # we only simulate non-africans. So we simulate using a percent cutoff for clade size 
 # that corresponds to the same number of actual non-africans (~29%):
-slim_min_clade_size_in_percent = int(round(0.25 * (nr_africans + nr_non_africans) / nr_non_africans  * 100))
+slim_min_clade_size_in_percent = int(round((analysis_globals.min_sweep_clade_size / (nr_africans + nr_non_africans)) * (nr_africans + nr_non_africans) / nr_non_africans  * 100))
 
 # generate combinations of parameters to run:
 
@@ -1552,7 +1496,7 @@ neutral_params = list(itertools.product(
     sexavg_rec_rates_per_gen,
     ['nosweep'], [0], [0], # type, sweep_generations, sel_coeficients
     [slim_min_clade_size_in_percent], # min clade size in percent
-    [100] # nr replicates
+    [10] # nr replicates
 ))
 # selection simulations:
 sweep_params = list(itertools.product(
@@ -1606,6 +1550,13 @@ for chrom, demog_name, size_reduction, rec_rate_per_gen, \
         slim_dist_files.append(slim_dist_file)
         slim_sites_file = sim_output_prefix + '_sites.hdf'
         slim_sites_files.append(slim_sites_file)
+        slim_vcf_file = sim_output_prefix + '.vcf'
+        slim_vcf_files.append(slim_vcf_file)
+        slim_ld_file = sim_output_prefix + '.vcf.hap.ld'
+        slim_ld_files.append(slim_ld_file)
+        slim_freq_file = sim_output_prefix + '.vcf.frq'
+        slim_freq_files.append(slim_freq_file)
+
 
         # run the simulation and compute pairwise differences
         gwf.target_from_template("{}_{}_slim".format(id_str, i),
@@ -1616,7 +1567,7 @@ for chrom, demog_name, size_reduction, rec_rate_per_gen, \
             sweep_type, sweep_start, demog, 
             chrom, size_reduction, 
             total_sim_generations,
-            slim_tree_file, slim_dist_file, slim_sites_file))
+            slim_tree_file, slim_dist_file, slim_sites_file, slim_vcf_file))
 
         # make dist twice file
         slim_dist_twice_file = modpath(slim_dist_file, base=modpath(slim_dist_file, parent='', suffix='')+'_twice')

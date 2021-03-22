@@ -865,7 +865,7 @@ def compute_tree_stats(input_table_file, output_hdf_file, component_hdf_file, co
 
 
 def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, sweep_start, demography,
- chrom, reduction, total_sim_generations, slim_tree_file, slim_dist_file, slim_sites_file):
+ chrom, reduction, total_sim_generations, slim_tree_file, slim_dist_file, slim_sites_file, slim_vcf_file):
 
     options = {'memory': '16g',
                'walltime': '3:00:00'
@@ -882,8 +882,11 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
         --demography {demography} \
         --chrom {chrom} --size-reduction {reduction} \
         --totalgenerations {total_sim_generations} \
-        {tree_output} {dist_output} {sites_output}
-            
+        {tree_output} {dist_output} {sites_output} {vcf_output}
+
+    vcftools --vcf {vcf_output} --out {vcf_output} --hap-r2 --min-r2 0 --ld-window-bp 5000000
+    vcftools --vcf {vcf_output} --out {vcf_output} --freq2 --derived
+
     """.format(selcoef=selcoef, gen_time=gen_time, 
             mut_per_year=mut_per_year, rec_rate=rec_rate,
             samples=samples, sweep_type=sweep_type, sweep_start=sweep_start, 
@@ -892,9 +895,10 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
             chrom=chrom, reduction=reduction,
             tree_output=slim_tree_file, 
             dist_output=slim_dist_file,
-            sites_output=slim_sites_file)
+            sites_output=slim_sites_file,
+            vcf_output=slim_vcf_file)
 
-    return [], [slim_tree_file, slim_dist_file, slim_sites_file], options, spec
+    return [], [slim_tree_file, slim_dist_file, slim_sites_file, slim_vcf_file, slim_vcf_file+'.frq', slim_vcf_file+'.hap.ld'], options, spec
 
 
 def slim_dist_twice(dist_file, dist_twice_file):
