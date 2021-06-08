@@ -989,7 +989,7 @@ g = gwf.target("build_male_dist_admix_masked_datasets_with_ust_ishim",
 male_dist_admix_masked_sweep_data_files = defaultdict(list)
                                                   
 for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
-    for min_sweep_clade_percent in range(0, 100, 1):
+    for min_sweep_clade_percent in range(0, 100, 5): # changed this from 1 to 5 may 23 2021
 
         sweep_stat_dir = os.path.join(male_dist_admix_masked_store_dir, str(pwdist_cutoff))
         if not os.path.exists(sweep_stat_dir):
@@ -1388,6 +1388,245 @@ hg19_map_files = reciprocal_liftover(hg38_map_files,
 
 
 #################################################################################
+# smc++
+#################################################################################
+
+dedicated_individuals =[
+'LP6005443-DNA_A06', # S_Greek-2, WestEurasia
+'LP6005443-DNA_D06', # S_Korean-1, EastAsia
+'LP6005519-DNA_D05', # S_Irula-2, SouthAsia
+'LP6005443-DNA_D02', # S_Yakut-2, CentralAsiaSiberia
+'LP6005443-DNA_F08', # S_Papuan-9, Oceania
+'LP6005441-DNA_E10', # S_Pima-1, America
+]
+max_missing = 100000
+mutation_rate = 1.52e-08 # 5.25e-10 * 29
+#mutation_rate = 1.247e-08
+generation_time = 29
+
+
+# run vcfmerge
+gwf.target(name='vcfmerge',
+    inputs=['results/analyzed_individuals.csv'], 
+    outputs=['steps/smcpp/vcf/nonafr_analyzed_individuals_chr7.vcf.gz'], 
+    walltime='03:00:00', 
+    memory='8g') << f"""
+source ./scripts/conda_init.sh
+conda activate smcpp
+mkdir -p steps/smcpp/vcf
+tail -n +2  ~/simons/faststorage/people/kmt/results/analyzed_individuals.csv | grep -v Africa | cut -f 1 -d ',' | grep -f - ~/simons/faststorage/data/metadata/nature18964-s2-fixed-genders.csv | cut -f 3 -d ';' | awk '$1="/home/kmt/simons/faststorage/data/vcfs/"$1".annotated.nh2.variants.vcf.gz"' > steps/smcpp/vcf/nonafr_analyzed_individuals_vcf_files.txt
+bcftools merge --regions 7 --missing-to-ref -Oz -o steps/smcpp/vcf/nonafr_analyzed_individuals_chr7.vcf.gz --file-list steps/vcf/nonafr_analyzed_individuals_vcf_files.txt
+tabix steps/smcpp/vcf/nonafr_analyzed_individuals_chr7.vcf.gz
+"""
+
+# sfs and r2 for vcf file
+gwf.target(name='sfs_r2',
+    inputs=['steps/smcpp/vcf/nonafr_analyzed_individuals_chr7.vcf.gz'], 
+    outputs=['steps/smcpp/vcf/nonafr_analyzed_individuals_chr7_with_aa.vcf.gz',
+            'steps/smcpp/vcf/nonafr_analyzed_individuals_chr7_with_aa.frq', 
+            'steps/smcpp/vcf/nonafr_analyzed_individuals_chr7_with_aa.geno.ld'], 
+    walltime='07:00:00', 
+    memory='8g') << f"""
+source ./scripts/conda_init.sh
+conda activate samtools
+mkdir -p steps/smcpp/vcf
+
+# Add ancestral allele info to vcf:
+zcat data/human_ancestor_GRCh37_e71/homo_sapiens_ancestor_7.fa.gz | sed 's,^>.*,>7,' | tr a-z A-Z | bgzip -c > steps/smcpp/vcf/human_ancestral_7.fa.gz
+samtools faidx steps/smcpp/vcf/human_ancestral_7.fa.gz
+zcat steps/smcpp/vcf/nonafr_analyzed_individuals_chr7.vcf.gz | fill-aa -a steps/smcpp/vcf/human_ancestral_ | gzip -c > steps/smcpp/vcf/nonafr_analyzed_individuals_chr7_with_aa.vcf.gz
+
+# compute polarized allele frequencies
+vcftools --gzvcf steps/smcpp/vcf/nonafr_analyzed_individuals_chr7_with_aa.vcf.gz --out steps/smcpp/vcf/nonafr_analyzed_individuals_chr7_with_aa --freq2 --derived
+
+# compute r2
+vcftools --gzvcf steps/smcpp/vcf/nonafr_analyzed_individuals_chr7_with_aa.vcf.gz --out steps/smcpp/vcf/nonafr_analyzed_individuals_chr7_with_aa --geno-r2 --min-r2 0.01  --ld-window-bp 500000
+"""
+
+
+# same but only for west eurasian samples west and north of instanbul
+istanbul_coord = (41.0082, 28.9784)
+vcf_subset_samples_regex = '|'.join([indiv for (indiv, info) in individuals.items() if info['Region'] == 'WestEurasia' and info['Latitude'] > istanbul_coord[0] and info['Longitude'] < istanbul_coord[1]])
+
+gwf.target(name='sfs_r2_eur',
+    inputs=['steps/smcpp/vcf/nonafr_analyzed_individuals_chr7_with_aa.vcf.gz'], 
+    outputs=['steps/smcpp/vcf/nonafr_europeans_chr7_with_aa.vcf.gz',
+    'steps/smcpp/vcf/nonafr_europeans_chr7_with_aa.frq', 
+    'steps/smcpp/vcf/nonafr_europeans_chr7_with_aa.geno.ld'], 
+    walltime='07:00:00', 
+    memory='8g') << f"""
+source ./scripts/conda_init.sh
+conda activate smcpp
+mkdir -p steps/smcpp/vcf
+
+SAMPLES=`grep -E '{vcf_subset_samples_regex}' ~/simons/faststorage/data/metadata/nature18964-s2-fixed-genders.csv | grep XY | cut -f 3 -d ';' | tr '\n' ',' | sed 's/.$//'`
+
+# extract european samples from vcf
+bcftools view -s $SAMPLES steps/smcpp/vcf/nonafr_analyzed_individuals_chr7_with_aa.vcf.gz > steps/smcpp/vcf/nonafr_analyzed_europeans_chr7_with_aa.vcf.gz
+
+# compute polarized allele frequencies
+vcftools --gzvcf steps/smcpp/vcf/nonafr_analyzed_europeans_chr7_with_aa.vcf.gz --out steps/smcpp/vcf/nonafr_analyzed_europeans_chr7_with_aa --freq2 --derived
+
+# compute r2
+vcftools --gzvcf steps/smcpp/vcf/nonafr_analyzed_europeans_chr7_with_aa.vcf.gz --out steps/smcpp/vcf/nonafr_analyzed_europeans_chr7_with_aa --geno-r2 --min-r2 0.01  --ld-window-bp 500000
+"""
+
+
+# same but only for papuans: 
+vcf_subset_samples_regex = '|'.join([indiv for (indiv, info) in individuals.items() if info['Population ID'] == 'Papuan'])
+
+gwf.target(name='sfs_r2_papuans',
+    inputs=['steps/smcpp/vcf/nonafr_analyzed_individuals_chr7_with_aa.vcf.gz'], 
+    outputs=['steps/smcpp/vcf/nonafr_analyzed_europeans_chr7_with_aa.vcf.gz',
+    'steps/smcpp/vcf/nonafr_analyzed_papuans_chr7_with_aa.frq', 
+    'steps/smcpp/vcf/nonafr_analyzed_papuans_chr7_with_aa.geno.ld'], 
+    walltime='07:00:00', 
+    memory='8g') << f"""
+source ./scripts/conda_init.sh
+conda activate smcpp
+mkdir -p steps/smcpp/vcf
+
+SAMPLES=`grep -E '{vcf_subset_samples_regex}' ~/simons/faststorage/data/metadata/nature18964-s2-fixed-genders.csv | grep XY | cut -f 3 -d ';' | tr '\n' ',' | sed 's/.$//'`
+
+# extract european samples from vcf
+bcftools view -s $SAMPLES steps/smcpp/vcf/nonafr_analyzed_individuals_chr7_with_aa.vcf.gz > steps/smcpp/vcf/nonafr_analyzed_papuans_chr7_with_aa.vcf.gz
+
+# compute polarized allele frequencies
+vcftools --gzvcf steps/smcpp/vcf/nonafr_analyzed_papuans_chr7_with_aa.vcf.gz --out steps/smcpp/vcf/nonafr_analyzed_papuans_chr7_with_aa --freq2 --derived
+
+# compute r2
+vcftools --gzvcf steps/smcpp/vcf/nonafr_analyzed_papuans_chr7_with_aa.vcf.gz --out steps/smcpp/vcf/nonafr_analyzed_papuans_chr7_with_aa --geno-r2 --min-r2 0.01  --ld-window-bp 500000
+"""
+
+
+
+# for max_missing in [50000, 100000]:
+for max_missing in [100000]:
+
+    # run vcf2sms
+    smc_file_name_list = []
+    for dedicated_indiv in dedicated_individuals:
+
+        smc_file_name = f'steps/smcpp/vcf2smc/{dedicated_indiv}_{max_missing}.txt'
+        smc_file_name_list.append(smc_file_name)
+
+        gwf.target(name=f'smcpp_vcf2smc_{max_missing}_{dedicated_indiv.replace("-", "_")}',
+            inputs=['steps/smcpp/vcf/nonafr_analyzed_individuals_chr7.vcf.gz'], 
+            outputs=[smc_file_name], 
+            walltime='02:00:00', 
+            memory='8g'
+            ) << f"""
+        source ./scripts/conda_init.sh
+        conda activate smcpp
+        mkdir -p steps/smcpp/vcf2smc
+        SAMPLES=`tail -n +2  ~/simons/faststorage/people/kmt/results/analyzed_individuals.csv | grep -v Africa | cut -f 1 -d ',' | grep -f - ~/simons/faststorage/data/metadata/nature18964-s2-fixed-genders.csv | cut -f 3 -d ';' | tr '\n' ',' | sed 's/.$//'`
+        singularity run docker://terhorst/smcpp:latest vcf2smc --cores 4 --missing-cutoff {max_missing} -d {dedicated_indiv} {dedicated_indiv} steps/smcpp/vcf/nonafr_analyzed_individuals_chr7.vcf.gz {smc_file_name} 7 nonAfr:$SAMPLES
+        """
+
+
+    for dedicated_indiv_list in [dedicated_individuals[:], dedicated_individuals[:-2]]:
+
+        for i in range(2):
+
+            # run estimate and plot   
+            prefix = f"estimate_{i}_{max_missing}_{'_'.join(dedicated_indiv_list)}"
+            tasktag = prefix.replace('-', '_')
+            gwf.target(name=f'estimate_{tasktag}_{i}',
+                inputs=smc_file_name_list, 
+                outputs=[f'steps/smcpp/{prefix}/model.final.json', f'steps/smcpp/{prefix}/{prefix}.png'], 
+                walltime='4-00:00:00', 
+                cores=10,
+                memory='16g'
+                ) << f"""
+            source ./scripts/conda_init.sh
+            conda activate smcpp
+            mkdir -p steps/smcpp/{prefix}
+            singularity run docker://terhorst/smcpp:latest estimate -o steps/smcpp/{prefix} --cores 10 --timepoints 35 4e4 {mutation_rate} {' '.join(smc_file_name_list)}
+            singularity run docker://terhorst/smcpp:latest plot -g {generation_time} -c steps/smcpp/{prefix}/{prefix}.png steps/smcpp/{prefix}/model.final.json
+            """
+
+            prefix = f"cv_{i}_{max_missing}_{'_'.join(dedicated_indiv_list)}"
+            tasktag = prefix.replace('-', '_')
+            gwf.target(name=f'estimate_{tasktag}_{i}',
+                inputs=smc_file_name_list, 
+                outputs=[f'steps/smcpp/{prefix}/model.final.json', f'steps/smcpp/{prefix}/{prefix}.png'], 
+                walltime='4-00:00:00', 
+                cores=10,
+                memory='16g'
+                ) << f"""
+            source ./scripts/conda_init.sh
+            conda activate smcpp
+            mkdir -p steps/smcpp/{prefix}
+            singularity run docker://terhorst/smcpp:latest cv --folds 2 -o steps/smcpp/{prefix} --cores 10 --timepoints 35 4e4 {mutation_rate} {' '.join(smc_file_name_list)}
+            singularity run docker://terhorst/smcpp:latest plot -g {generation_time} -c steps/smcpp/{prefix}/{prefix}.png steps/smcpp/{prefix}/model.final.json
+            """
+
+            # run estimate and plot   
+            prefix = f"estimate_fixrec_{i}_{max_missing}_{'_'.join(dedicated_indiv_list)}"
+            tasktag = prefix.replace('-', '_')
+            gwf.target(name=f'estimate_{tasktag}_{i}',
+                inputs=smc_file_name_list, 
+                outputs=[f'steps/smcpp/{prefix}/model.final.json', f'steps/smcpp/{prefix}/{prefix}.png'], 
+                walltime='4-00:00:00', 
+                cores=10,
+                memory='16g'
+                ) << f"""
+            source ./scripts/conda_init.sh
+            conda activate smcpp
+            mkdir -p steps/smcpp/{prefix}
+            singularity run docker://terhorst/smcpp:latest estimate -r 1.13e-8 -o steps/smcpp/{prefix} --cores 10 --timepoints 35 4e4 {mutation_rate} {' '.join(smc_file_name_list)}
+            singularity run docker://terhorst/smcpp:latest plot -g {generation_time} -c steps/smcpp/{prefix}/{prefix}.png steps/smcpp/{prefix}/model.final.json
+            """
+
+            prefix = f"cv_fixrec_{i}_{max_missing}_{'_'.join(dedicated_indiv_list)}"
+            tasktag = prefix.replace('-', '_')
+            gwf.target(name=f'estimate_{tasktag}_{i}',
+                inputs=smc_file_name_list, 
+                outputs=[f'steps/smcpp/{prefix}/model.final.json', f'steps/smcpp/{prefix}/{prefix}.png'], 
+                walltime='4-00:00:00', 
+                cores=10,
+                memory='16g'
+                ) << f"""
+            source ./scripts/conda_init.sh
+            conda activate smcpp
+            mkdir -p steps/smcpp/{prefix}
+            singularity run docker://terhorst/smcpp:latest cv -r 1.13e-8 --folds 2 -o steps/smcpp/{prefix} --cores 10 --timepoints 35 4e4 {mutation_rate} {' '.join(smc_file_name_list)}
+            singularity run docker://terhorst/smcpp:latest plot -g {generation_time} -c steps/smcpp/{prefix}/{prefix}.png steps/smcpp/{prefix}/model.final.json
+            """
+#################################################################################
+# drift and recombination simulations
+#################################################################################
+
+# drift_rec_outfile = 'results/neutral_freq_sims.hdf'
+
+# gwf.target(name='neutral_freq_sims',
+#     inputs=[], 
+#     outputs=[drift_rec_outfile], 
+#     walltime='4-00:00:00', 
+#     cores=10,
+#     memory='16g'
+#     ) << f"""
+# source ./scripts/conda_init.sh
+# conda activate simons
+# python scripts/neutral_freq_sims.py {drift_rec_outfile}
+# """
+
+drift_rec_outfile = 'results/multinom_sampling.hdf'
+
+gwf.target(name='multinom_sampling',
+    inputs=[], 
+    outputs=[drift_rec_outfile], 
+    walltime='4-00:00:00', 
+    cores=10,
+    memory='16g'
+    ) << f"""
+source ./scripts/conda_init.sh
+conda activate simons
+python scripts/multinom_sampling.py {drift_rec_outfile}
+"""
+
+
+#################################################################################
 # slim simulations
 #################################################################################
 
@@ -1396,7 +1635,9 @@ slim_dist_files = list()
 slim_dist_twice_files = list()
 slim_sites_files = list()
 slim_vcf_files = list()
+slim_geno_vcf_files = list()
 slim_ld_files = list()
+slim_geno_ld_files = list()
 slim_freq_files = list()
 sweep_data_files = list()
 
@@ -1417,31 +1658,22 @@ nr_africans = sum(x['Region'] == 'Africa' and x['Genetic sex assignment'] == 'XY
 total_sim_generations = 200000
 
 # pasted fro nb_22_slim_simulations notebook:
-# standard_demography = \
-# [(1, 19620),
-#  (175862, 21800),
-#  (191379, 13080),
-#  (194827, 6540),
-#  (196551, 4360),
-#  (197586, 3270),
-#  (198448, 4360),
-#  (198793, 6540),
-#  (199137, 13080),
-#  (199482, 21800),
-#  (199724, 54500),
-#  (199896, 109000)]
 standard_demography = \
-[]
+[(1, 23434),
+ (162010, 13579),
+ (183858, 27616),
+ (194462, 4107),
+ (196870, 3936),
+ (197809, 7343),
+ (198466, 15066),
+ (198926, 37591),
+ (199300, 86151),
+ (199604, 153716),
+ (199791, 210671),
+ (199882, 239151),
+ (199938, 255465)]
 
 # pasted from nb_22_slim_simulations notebook:
-# standard_demography_truncated = \
-# [(1, 19620),
-#  (175862, 21800),
-#  (191379, 13080),
-#  (194827, 6540),
-#  (196551, 4360),
-#  (197586, 3270),
-#  (198448, 4360)]
 standard_demography_truncated = \
 []
 
@@ -1496,7 +1728,7 @@ neutral_params = list(itertools.product(
     sexavg_rec_rates_per_gen,
     ['nosweep'], [0], [0], # type, sweep_generations, sel_coeficients
     [slim_min_clade_size_in_percent], # min clade size in percent
-    [10] # nr replicates
+    [0] # nr replicates
 ))
 # selection simulations:
 sweep_params = list(itertools.product(
@@ -1533,7 +1765,13 @@ for chrom, demog_name, size_reduction, rec_rate_per_gen, \
         # account for hte fact that only 2/3 of X chromosomes have the oportunity to combine 
         # in each generation (assuming even sex ratios).
         meiosis_rec_rate =  rec_rate_per_gen * 3 / 2
-                    
+            
+        mut_per_year = analysis_globals.mut_per_year
+    elif chrom == 'A':
+        mut_per_year = analysis_globals.auto_mut_per_year        
+    else:
+        assert 0
+            
     id_str = '{}_{}_{}_{}_{}_{}_{}'.format(demog_name,
     round(size_reduction*100), round(rec_rate_per_gen * 1e12),
     chrom, sweep_type, sweep_start, int(selcoef*100))
@@ -1543,6 +1781,9 @@ for chrom, demog_name, size_reduction, rec_rate_per_gen, \
 
     # replicates
     for i in range(nr_replicates):
+
+
+
         sim_output_prefix = os.path.join(slim_output_dir, "{}_{}".format(id_str, i))
         slim_tree_file = sim_output_prefix + '.trees'
         slim_tree_files.append(slim_tree_file)
@@ -1552,22 +1793,29 @@ for chrom, demog_name, size_reduction, rec_rate_per_gen, \
         slim_sites_files.append(slim_sites_file)
         slim_vcf_file = sim_output_prefix + '.vcf'
         slim_vcf_files.append(slim_vcf_file)
-        slim_ld_file = sim_output_prefix + '.vcf.hap.ld'
-        slim_ld_files.append(slim_ld_file)
-        slim_freq_file = sim_output_prefix + '.vcf.frq'
-        slim_freq_files.append(slim_freq_file)
+        slim_geno_vcf_file = sim_output_prefix + '_geno.vcf'
+        slim_geno_vcf_files.append(slim_vcf_file)
 
+        if chrom == 'A':
+            slim_ld_file = sim_output_prefix + '.vcf.hap.ld'
+            slim_ld_files.append(slim_ld_file)
+            slim_geno_ld_file = sim_output_prefix + '.vcf.geno.ld'
+            slim_geno_ld_files.append(slim_ld_file)
+            slim_freq_file = sim_output_prefix + '.vcf.frq'
+            slim_freq_files.append(slim_freq_file)
 
         # run the simulation and compute pairwise differences
         gwf.target_from_template("{}_{}_slim".format(id_str, i),
             slim_sim(selcoef, analysis_globals.gen_time, 
-            '{:.12f}'.format(analysis_globals.mut_per_year), 
+            '{:.12f}'.format(mut_per_year), 
             meiosis_rec_rate,
             nr_non_africans,
             sweep_type, sweep_start, demog, 
             chrom, size_reduction, 
             total_sim_generations,
-            slim_tree_file, slim_dist_file, slim_sites_file, slim_vcf_file))
+            slim_tree_file, slim_dist_file, slim_sites_file, 
+            slim_vcf_file, slim_geno_vcf_file, 
+            compute_ld_and_freqs=chrom=='A'))
 
         # make dist twice file
         slim_dist_twice_file = modpath(slim_dist_file, base=modpath(slim_dist_file, parent='', suffix='')+'_twice')

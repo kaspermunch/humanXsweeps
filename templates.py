@@ -128,7 +128,7 @@ def vcf2haplo(vcf_file, sample_id, masked_ref, out_file1, haploid=False, out_fil
 
     source ./scripts/conda_init.sh
     conda activate simons
-    source /com/extra/vcftools/0.1.14/load.sh
+    source ./com/extra/vcftools/0.1.14/load.sh
     vcftools --gzvcf {vcf_file} --remove-indels --remove-filtered-all --max-alleles 2 \
         --recode --recode-INFO-all --indv {sample_id} --stdout | \
     python scripts/phased_vcf_to_hapltype.py --sample {sample_id} --masked_ref {ref} {haploid_arg} {out_args}
@@ -865,10 +865,22 @@ def compute_tree_stats(input_table_file, output_hdf_file, component_hdf_file, co
 
 
 def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, sweep_start, demography,
- chrom, reduction, total_sim_generations, slim_tree_file, slim_dist_file, slim_sites_file, slim_vcf_file):
+ chrom, reduction, total_sim_generations, slim_tree_file, slim_dist_file, slim_sites_file, 
+ slim_vcf_file, slim_vcf_geno_file, compute_ld_and_freqs=False):
+
+    if compute_ld_and_freqs:
+        ld_and_freq_cmds = """
+        vcftools --vcf {vcf_output} --out {vcf_output} --hap-r2 --min-r2 0.01 --ld-window-bp 500000
+        vcftools --vcf {vcf_geno_output} --out {vcf_geno_output} --geno-r2 --min-r2 0.01 --ld-window-bp 500000
+        vcftools --vcf {vcf_output} --out {vcf_output} --freq2 --derived
+        """.format(vcf_output=slim_vcf_file, vcf_geno_output=slim_vcf_geno_file)
+        ld_and_freq_out_files = [slim_vcf_file+'.frq', slim_vcf_file+'.hap.ld', slim_vcf_file+'.geno.ld']
+    else:
+        ld_and_freq_cmds = ''
+        ld_and_freq_out_files = []
 
     options = {'memory': '16g',
-               'walltime': '3:00:00'
+               'walltime': '7:00:00'
               } 
 
     spec = """
@@ -882,10 +894,9 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
         --demography {demography} \
         --chrom {chrom} --size-reduction {reduction} \
         --totalgenerations {total_sim_generations} \
-        {tree_output} {dist_output} {sites_output} {vcf_output}
+        {tree_output} {dist_output} {sites_output} {vcf_output} {vcf_geno_output}
 
-    vcftools --vcf {vcf_output} --out {vcf_output} --hap-r2 --min-r2 0 --ld-window-bp 5000000
-    vcftools --vcf {vcf_output} --out {vcf_output} --freq2 --derived
+    {ld_and_freq_cmds}
 
     """.format(selcoef=selcoef, gen_time=gen_time, 
             mut_per_year=mut_per_year, rec_rate=rec_rate,
@@ -896,9 +907,10 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
             tree_output=slim_tree_file, 
             dist_output=slim_dist_file,
             sites_output=slim_sites_file,
-            vcf_output=slim_vcf_file)
+            ld_and_freq_cmds=ld_and_freq_cmds,
+            vcf_output=slim_vcf_file, vcf_geno_output=slim_vcf_geno_file)
 
-    return [], [slim_tree_file, slim_dist_file, slim_sites_file, slim_vcf_file, slim_vcf_file+'.frq', slim_vcf_file+'.hap.ld'], options, spec
+    return [], [slim_tree_file, slim_dist_file, slim_sites_file, slim_vcf_file] + ld_and_freq_out_files, options, spec
 
 
 def slim_dist_twice(dist_file, dist_twice_file):
@@ -1057,7 +1069,7 @@ def g1000_fst(vcf_file, pop_files, out_file):
     spec = """
     source ./scripts/conda_init.sh
     conda activate simons
-    source /com/extra/vcftools/0.1.14/load.sh
+    source ./com/extra/vcftools/0.1.14/load.sh
     vcftools --gzvcf {vcf_file} --remove-indels --remove-filtered-all --max-alleles 2 \
         --fst-window-size 100000 {fst_args} --out {out_file}
     """.format(vcf_file=vcf_file, fst_args=fst_args, out_file=out_file.replace('.windowed.weir.fst', ''))
