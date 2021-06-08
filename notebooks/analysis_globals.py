@@ -83,8 +83,18 @@ min_prop_swept = 0.5
 peak_min_prop_swept = 0.25
 
 
-# mutation rate per year
-mut_per_year = 4.3e-10 
+
+# ratio of X to auto mutation rate
+mut_rate_x_auto_ratio = ((1/3) * 0.8 + (2/3) * 0.2) / ((1/2) * 0.8 + (1/2) * 0.2) # 0.8
+
+# X mutation rate per year
+#mut_per_year = 4.3e-10 
+
+# 0.001027 / 0.000841 = 1.221 (S_Eskimo_Sireniki-1 Href divergence for filter 1 /  S_Eskimo_Sireniki-1 Href divergence for filter 9)
+mut_per_year = 4.3e-10 * 1.221 * mut_rate_x_auto_ratio # 4.200240000000001e-10
+
+# autosome mutation rate per year
+auto_mut_per_year = mut_per_year / mut_rate_x_auto_ratio # 5.250300000000001e-10
 
 # generation time
 gen_time = 29
