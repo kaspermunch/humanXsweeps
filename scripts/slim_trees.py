@@ -224,6 +224,8 @@ parser.add_argument("--dumpscript", action='store_true')
 parser.add_argument("trees_file", type=str)
 parser.add_argument("dist_file", type=str)
 parser.add_argument("sites_file", type=str)
+parser.add_argument("vcf_file", type=str)
+parser.add_argument("vcf_geno_file", type=str)
 args = parser.parse_args()
 
 window_size = args.window
@@ -312,7 +314,9 @@ mutated_ts = msprime.mutate(ts, rate=args.mutationrate*args.generationtime)
 positions = [site.position for site in mutated_ts.sites()]  
 
 # get genotypes for sample at variant sites in population:
-variants = mutated_ts.variants(samples=sample_nodes, as_bytes=False, impute_missing_data=False)
+variants = mutated_ts.variants(samples=sample_nodes, as_bytes=False, 
+	impute_missing_data=False)
+	# isolated_as_missing=False)
 table = np.array([var.genotypes for var in variants])
 
 # turn table into dataframe with positions
@@ -320,6 +324,32 @@ df = DataFrame(table, dtype='int8')
 df['pos'] = positions
 # write sites to hdf
 df.to_hdf(args.sites_file, 'df', format='table', mode='w')
+
+# write a VCF
+vcf_df = DataFrame(table, dtype='int8')
+# remove rows without derived variants
+polymorphic = (vcf_df != 0).any(axis=1)
+vcf_df = vcf_df.loc[polymorphic]
+positions = pd.Series([round(p) for p in positions])
+positions = positions[polymorphic]
+vcf_df.insert(0, 'FORMAT', 'GT')
+vcf_df.insert(0, 'INFO', 'AA=A')
+vcf_df.insert(0, 'FILTER', '')
+vcf_df.insert(0, 'QUAL', '')
+vcf_df.insert(0, 'ALT', 'T')
+vcf_df.insert(0, 'REF', 'A')
+vcf_df.insert(0, 'ID', list(range(len(positions))))
+vcf_df.insert(0, 'POS', positions.values)
+vcf_df.insert(0, '#CHROM', '1')
+vcf_df.to_csv(args.vcf_file, sep='\t', index=False)
+
+# write a VCF where the haplotypes are artificially treated as unphased diploid genotypes
+geno_vcf_df = vcf_df.iloc[:, 0:9]
+samples = vcf_df.columns.values[9:].tolist()
+for i, (a, b) in enumerate(zip(samples[0::2], samples[1::2])):
+    geno_vcf_df[i] = vcf_df[a].astype('str') + '/' +  vcf_df[b].astype('str')
+geno_vcf_df.to_csv(args.vcf_geno_file, sep='\t', index=False)
+
 
 # add a row with zeros for the start of each window so there is at least
 # one row in each window
