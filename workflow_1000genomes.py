@@ -365,6 +365,15 @@ for chrom in autosomes + ['X']:
         """.format(dist_dir=pop_dist_dir, out_file=pop_store_file, dist_twice_out_file=dist_twice_pop_store_file)
 
 
+
+
+
+
+
+
+
+
+
 #################################################################################
 # Call sweeps on the distance data with given pwdist_cutoff and min_sweep_clade_size
 #################################################################################
@@ -379,14 +388,14 @@ for chrom in autosomes + ['X']:
 
     for pop, pop_store_file in g1000_male_dist_admix_masked_store_files[chrom].items():
 
-        # ##############################
-        # if pop not in ['CHB', 'YRI']:
-        #     continue
-        # #############################
+        #############################
+        if pop not in ['CEU', 'CHB', 'YRI']:
+            continue
+        ############################
 
-        for pwdist_cutoff in [5e-5]:
+        for pwdist_cutoff in [analysis_globals.pwdist_cutoff]:
 
-            for min_sweep_clade_percent in [25]: #range(20, 40, 5):
+            for min_sweep_clade_percent in range(25, 55, 5): 
 
                 sweep_stat_dir = os.path.join(os.path.dirname(pop_store_file), str(pwdist_cutoff))
                 if not os.path.exists(sweep_stat_dir):
@@ -411,6 +420,11 @@ for chrom in autosomes + ['X']:
                     chrom, pop, pwdist_cutoff, min_sweep_clade_percent), 
                     clique_data(dist_twice_pop_store_file, pop_sweep_data_file, 
                                      min_sweep_clade_percent, pwdist_cutoff))
+
+
+
+
+
 
 
 # #################################################################################

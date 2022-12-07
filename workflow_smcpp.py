@@ -19,12 +19,14 @@ mutation_rate = 1.52e-08 # 5.25e-10 * 29
 #mutation_rate = 1.247e-08
 generation_time = 29
 
+chromosomes = ['7', 'X']
+
 ###################################################
 
-# run vcfmerge
-gwf.target(name='vcfmerge',
+# run vcfmerge for 7 and X
+gwf.target(name='vcfmerge_both_chr7_chrX',
      inputs=['results/analyzed_individuals.csv'], 
-     outputs=['steps/vcf/nonafr_analyzed_individuals_chr7.vcf.gz'], 
+     outputs=['steps/vcf/nonafr_analyzed_individuals_chr7.vcf.gz', 'steps/vcf/nonafr_analyzed_individuals_chrX.vcf.gz'], 
      walltime='03:00:00', 
      memory='8g') << f"""
 mkdir -p steps/vcf
@@ -34,55 +36,62 @@ tail -n +2  ~/simons/faststorage/people/kmt/results/analyzed_individuals.csv | g
 bcftools merge --regions 7 --missing-to-ref -Oz -o steps/vcf/nonafr_analyzed_individuals_chr7.vcf.gz --file-list steps/vcf/nonafr_analyzed_individuals_vcf_files.txt
 
 tabix steps/vcf/nonafr_analyzed_individuals_chr7.vcf.gz
+
+
+bcftools merge --regions X:3000000-154000000 --missing-to-ref -Oz -o steps/vcf/nonafr_analyzed_individuals_chrX.vcf.gz --file-list steps/vcf/nonafr_analyzed_individuals_vcf_files.txt
+
+tabix steps/vcf/nonafr_analyzed_individuals_chrX.vcf.gz
 """
 
-# run vcf2sms
-smc_file_name_list = []
-for dedicated_indiv in dedicated_indiv_list:
+for chrom in ['7', 'X']:
 
-    smc_file_name = f'steps/smcpp/vcf2smc/{dedicated_indiv}_{max_missing}.txt'
-    smc_file_name_list.append(smc_file_name)
+    # run vcf2sms
+    smc_file_name_list = []
+    for dedicated_indiv in dedicated_indiv_list:
 
-    gwf.target(name=f'vcf2smc_{dedicated_indiv.replace("-", "_")}',
-        inputs=['steps/vcf/nonafr_analyzed_individuals_chr7.vcf.gz'], 
-        outputs=[smc_file_name], 
-        walltime='02:00:00', 
-        memory='8g'
-        ) << f"""
-    mkdir -p steps/smcpp/vcf2smc
+        smc_file_name = f'steps/smcpp/vcf2smc/{chrom}_{dedicated_indiv}_{max_missing}.txt'
+        smc_file_name_list.append(smc_file_name)
 
-    SAMPLES=`tail -n +2  ~/simons/faststorage/people/kmt/results/analyzed_individuals.csv | grep -v Africa | cut -f 1 -d ',' | grep -f - ~/simons/faststorage/data/metadata/nature18964-s2-fixed-genders.csv | cut -f 3 -d ';' | tr '\n' ',' | sed 's/.$//'`
+        gwf.target(name=f'vcf2smc_chr{chrom}_{dedicated_indiv.replace("-", "_")}',
+            inputs=[f'steps/vcf/nonafr_analyzed_individuals_chr{chrom}.vcf.gz'], 
+            outputs=[smc_file_name], 
+            walltime='02:00:00', 
+            memory='8g'
+            ) << f"""
+        mkdir -p steps/smcpp/vcf2smc
 
-    singularity run docker://terhorst/smcpp:latest vcf2smc --cores 4 --missing-cutoff {max_missing} -d {dedicated_indiv} {dedicated_indiv} steps/vcf/nonafr_analyzed_individuals_chr7.vcf.gz {smc_file_name} 7 nonAfr:$SAMPLES
+        SAMPLES=`tail -n +2  ~/simons/faststorage/people/kmt/results/analyzed_individuals.csv | grep -v Africa | cut -f 1 -d ',' | grep -f - ~/simons/faststorage/data/metadata/nature18964-s2-fixed-genders.csv | cut -f 3 -d ';' | tr '\n' ',' | sed 's/.$//'`
+
+        singularity run docker://terhorst/smcpp:latest vcf2smc --cores 4 --missing-cutoff {max_missing} -d {dedicated_indiv} {dedicated_indiv} steps/vcf/nonafr_analyzed_individuals_chr{chrom}.vcf.gz {smc_file_name} {chrom} nonAfr:$SAMPLES
+        """
+
+    # run estimate and plot   
+    prefix = f"chr{chrom}_step_{max_missing}_{'_'.join(dedicated_indiv_list)}"    
+    gwf.target(name=f'estimate_chr{chrom}_step111',
+         inputs=smc_file_name_list, 
+         outputs=[f'steps/smcpp/{prefix}/model.final.json', f'steps/smcpp/{prefix}/{prefix}.png'], 
+         walltime='4-00:00:00', 
+         cores=10,
+         memory='16g'
+         ) << f"""
+    mkdir -p steps/smcpp/{prefix}
+    singularity run docker://terhorst/smcpp:latest estimate -o steps/smcpp/{prefix} --cores 10 --timepoints 35 4e4 {mutation_rate} {' '.join(smc_file_name_list)}
+    singularity run docker://terhorst/smcpp:latest plot -g {generation_time} -c steps/smcpp/{prefix}/{prefix}.png steps/smcpp/{prefix}/model.final.json
     """
-    
-# run estimate and plot   
-prefix = f"step_{max_missing}_{'_'.join(dedicated_indiv_list)}"    
-gwf.target(name='estimate_step111',
-     inputs=smc_file_name_list, 
-     outputs=[f'steps/smcpp/{prefix}/model.final.json', f'steps/smcpp/{prefix}/{prefix}.png'], 
-     walltime='4-00:00:00', 
-     cores=10,
-     memory='16g'
-     ) << f"""
-mkdir -p steps/smcpp/{prefix}
-singularity run docker://terhorst/smcpp:latest estimate -o steps/smcpp/{prefix} --cores 10 --timepoints 35 4e4 {mutation_rate} {' '.join(smc_file_name_list)}
-singularity run docker://terhorst/smcpp:latest plot -g {generation_time} -c steps/smcpp/{prefix}/{prefix}.png steps/smcpp/{prefix}/model.final.json
-"""
 
-# # run estimate and plot   
-# prefix = f"pchip_{max_missing}_{'_'.join(dedicated_indiv_list)}"    
-# gwf.target(name='estimate_pchip111',
-#      inputs=smc_file_name_list, 
-#      outputs=[f'steps/smcpp/{prefix}/model.final.json', f'steps/smcpp/{prefix}/{prefix}.png'], 
-#      walltime='4-00:00:00', 
-#      cores=10,
-#      memory='16g'
-#      ) << f"""
-# mkdir -p steps/smcpp/{prefix}
-# singularity run docker://terhorst/smcpp:latest estimate -o steps/smcpp/{prefix} --cores 10 --timepoints 35 4e4 --spline pchip {mutation_rate} {' '.join(smc_file_name_list)}
-# singularity run docker://terhorst/smcpp:latest plot -g {generation_time} -c steps/smcpp/{prefix}/{prefix}.png steps/smcpp/model.final.json
-# """
+    # run estimate and plot   
+    prefix = f"chr{chrom}_pchip_{max_missing}_{'_'.join(dedicated_indiv_list)}"    
+    gwf.target(name=f'estimate_chr{chrom}_pchip111',
+         inputs=smc_file_name_list, 
+         outputs=[f'steps/smcpp/{prefix}/model.final.json', f'steps/smcpp/{prefix}/{prefix}.png'], 
+         walltime='4-00:00:00', 
+         cores=10,
+         memory='16g'
+         ) << f"""
+    mkdir -p steps/smcpp/{prefix}
+    singularity run docker://terhorst/smcpp:latest estimate -o steps/smcpp/{prefix} --cores 10 --timepoints 35 4e4 --spline pchip {mutation_rate} {' '.join(smc_file_name_list)}
+    singularity run docker://terhorst/smcpp:latest plot -g {generation_time} -c steps/smcpp/{prefix}/{prefix}.png steps/smcpp/model.final.json
+    """
 
 
 

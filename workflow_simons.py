@@ -666,6 +666,7 @@ for i, (unmasked, masked) in enumerate(zip(male_x_haploids, admix_masked_male_x_
 #         admix_pred_file=laurits_admix_pred_file, min_post_prob=min_admix_post_prob))
 
 
+
 # #################################################################################
 # # compute diffs in windows over all male x haplotypes
 # #################################################################################
@@ -909,6 +910,11 @@ for file1, file2 in itertools.combinations(sorted(admix_masked_male_x_haploids),
 
 
 ########## NEW VERSION ########################
+
+#################################################################################
+# Call sweeps on the distance data with given pwdist_cutoff and min_sweep_clade_size
+#################################################################################
+
 male_dist_admix_masked_store_dir = os.path.join(mydir, 'steps', 'male_dist_admix_masked_stores')
 if not os.path.exists(male_dist_admix_masked_store_dir):
     os.makedirs(male_dist_admix_masked_store_dir)
@@ -1611,20 +1617,54 @@ for max_missing in [100000]:
 # python scripts/neutral_freq_sims.py {drift_rec_outfile}
 # """
 
-drift_rec_outfile = 'results/multinom_sampling.hdf'
 
-gwf.target(name='multinom_sampling',
-    inputs=[], 
-    outputs=[drift_rec_outfile], 
-    walltime='4-00:00:00', 
-    cores=10,
-    memory='16g'
-    ) << f"""
-source ./scripts/conda_init.sh
-conda activate simons
-python scripts/multinom_sampling.py {drift_rec_outfile}
-"""
 
+for span_years in [5000, 10000, 15000, 20000, 25000]:
+    drift_rec_outfile_spaced = f'results/multinom_sampling_sexavg_spaced_{span_years}.hdf'
+    drift_rec_outfile_echfreqs = f'results/multinom_sampling_sexavg_echfreqs_{span_years}.hdf'
+    gwf.target(name=f'multinom_sampling_{span_years}',
+        inputs=[], 
+        outputs=[drift_rec_outfile_spaced, drift_rec_outfile_echfreqs], 
+        walltime='6-23:00:00', 
+        cores=20,
+        memory='80g'
+        ) << f"""
+    source ./scripts/conda_init.sh
+    conda activate simons
+    python scripts/multinom_sampling.py --years {span_years} {drift_rec_outfile_spaced} {drift_rec_outfile_echfreqs}
+    """
+
+# drift_rec_outfile_spaced = 'results/multinom_sampling_spaced.hdf'
+# drift_rec_outfile_echfreqs = 'results/multinom_sampling_echfreqs.hdf'
+
+# gwf.target(name='multinom_sampling',
+#     inputs=[], 
+#     outputs=[drift_rec_outfile_spaced, drift_rec_outfile_echfreqs], 
+#     walltime='6-23:00:00', 
+#     cores=20,
+#     memory='80g'
+#     ) << f"""
+# source ./scripts/conda_init.sh
+# conda activate simons
+# python scripts/multinom_sampling.py --years 5000 --years 10000 --years 15000 --years 20000 --years 25000 {drift_rec_outfile_spaced} {drift_rec_outfile_echfreqs}
+# """
+
+# # extra sims assuming spans of 20,000 and 25,000 years:
+
+# drift_rec_outfile_spaced = 'results/multinom_sampling_spaced_extra.hdf'
+# drift_rec_outfile_echfreqs = 'results/multinom_sampling_echfreqs_extra.hdf'
+
+# gwf.target(name='multinom_sampling_extra',
+#     inputs=[], 
+#     outputs=[drift_rec_outfile_spaced, drift_rec_outfile_echfreqs], 
+#     walltime='6-23:00:00', 
+#     cores=20,
+#     memory='80g'
+#     ) << f"""
+# source ./scripts/conda_init.sh
+# conda activate simons
+# python scripts/multinom_sampling.py --years 5000 --years 10000 --years 15000 --years 20000 --years 25000  {drift_rec_outfile_spaced} {drift_rec_outfile_echfreqs}
+# """
 
 #################################################################################
 # slim simulations
@@ -1658,20 +1698,52 @@ nr_africans = sum(x['Region'] == 'Africa' and x['Genetic sex assignment'] == 'XY
 total_sim_generations = 200000
 
 # pasted fro nb_22_slim_simulations notebook:
+# standard_demography = \
+# [(1, 23434),
+#  (162010, 13579),
+#  (183858, 27616),
+#  (194462, 4107),
+#  (196870, 3936),
+#  (197809, 7343),
+#  (198466, 15066),
+#  (198926, 37591),
+#  (199300, 86151),
+#  (199604, 153716),
+#  (199791, 210671),
+#  (199882, 239151),
+#  (199938, 255465)]
+
+# tennesen CEU from nb_22_slim_simulations notebook:
 standard_demography = \
-[(1, 23434),
- (162010, 13579),
- (183858, 27616),
- (194462, 4107),
- (196870, 3936),
- (197809, 7343),
- (198466, 15066),
- (198926, 37591),
- (199300, 86151),
- (199604, 153716),
- (199791, 210671),
- (199882, 239151),
- (199938, 255465)]
+[(1, 15038),
+ (185354, 15038),
+ (186450, 29751),
+ (189244, 29776),
+ (191533, 29776),
+ (193592, 29776),
+ (195329, 3833),
+ (196567, 3828),
+ (197254, 3826),
+ (197711, 3826),
+ (197892, 2306),
+ (198009, 2765),
+ (198178, 3473),
+ (198347, 4361),
+ (198517, 5476),
+ (198686, 6875),
+ (198855, 8255),
+ (198956, 9366),
+ (199043, 10529),
+ (199130, 11833),
+ (199217, 13300),
+ (199304, 14950),
+ (199391, 16801),
+ (199478, 19772),
+ (199565, 36416),
+ (199652, 76838),
+ (199739, 162123),
+ (199826, 342067),
+ (199913, 715553)]
 
 # pasted from nb_22_slim_simulations notebook:
 standard_demography_truncated = \
@@ -1684,7 +1756,8 @@ test_demography = \
 sweep_types = ['nosweep']#, 'complete', 'partial']
 
  # pasted fro nb_22_slim_simulations notebook
-sweep_generations = [198275] #  [198965, 198275, 197586, 196896]
+sweep_generations = [198103] # sweep starts 55000 years ago
+#  [198965, 198275, 197586, 196896]
 
 # named autosomal population size demographies:
 demographies = {
@@ -1694,7 +1767,9 @@ demographies = {
 }
 
 # African X/A ratio is 0.66 but is further reduce inside regions:
-x_auto_ratios = [0.65 * x for x in [1, 0.71]] # outside and inside regions
+# x_auto_ratios = [0.65 * x for x in [1, 0.71]] # outside and inside regions
+# x_auto_ratios = [0.65 * x for x in [1, 0.71]] # outside and inside regions
+x_auto_ratios = [0.65, 0.51] # African and non-African
 
 # size reduction beyond 3/4 (slim takes care of the 3/4 book keeping):
 size_reductions = [x/0.75 for x in x_auto_ratios]  # outside and inside regions
@@ -1707,6 +1782,25 @@ sexavg_rec_rates_per_gen = [0.46e-8, # mean in regions
 # that corresponds to the same number of actual non-africans (~29%):
 slim_min_clade_size_in_percent = int(round((analysis_globals.min_sweep_clade_size / (nr_africans + nr_non_africans)) * (nr_africans + nr_non_africans) / nr_non_africans  * 100))
 
+# slim_min_clade_size_in_percent = [45, 50, 55]
+slim_min_clade_size_in_percent = [50]
+
+# write 10mb recombination map files
+target = gwf.target("slim_rec_maps", 
+    inputs=['data/decode_hg38_sexavg_per_gen.tsv'], 
+    outputs=[f'steps/slim/rec_maps/{x}.tsv' for x in range(15)],
+    memory='1g', walltime='00:10:00') << """
+
+    mkdir -p steps/slim/rec_maps
+    python scripts/slim_rec_maps.py data/decode_hg38_sexavg_per_gen.tsv steps/slim/rec_maps
+
+"""
+
+# nr of simulated sequences
+# sim_sample_size = nr_non_africans
+sim_sample_size = 49 # number of CEU males
+
+rec_map_files = target.outputs
 # generate combinations of parameters to run:
 
 # testing that autosome settings produce expected diversity:
@@ -1719,31 +1813,33 @@ autosome_params = list(itertools.product(
     [slim_min_clade_size_in_percent], # min clade size in percent
     [10] # nr replicates
 ))
+
 # neutral simulations:
 neutral_params = list(itertools.product(
     ['X'], # chromosome X or A for autosome
     # ['standard', 'truncated'], # demography
     ['standard'], # demography
     size_reductions,
-    sexavg_rec_rates_per_gen,
+    # sexavg_rec_rates_per_gen,
+    rec_map_files,
     ['nosweep'], [0], [0], # type, sweep_generations, sel_coeficients
     [slim_min_clade_size_in_percent], # min clade size in percent
-    [0] # nr replicates
+    [500] # nr replicates
 ))
+
 # selection simulations:
 sweep_params = list(itertools.product(
     ['X'], # chromosome X or A
     ['standard'], # demography
     size_reductions,
-    sexavg_rec_rates_per_gen,
-    ['complete', 'partial'], sweep_generations, [0.01, 0.1],
+    # sexavg_rec_rates_per_gen,
+    rec_map_files,    
+    # ['complete', 'partial'], sweep_generations, [0.01, 0.1],
+    ['episode'], sweep_generations, [0.01, 0.02, 0.05, 0.1], # using episode, slim_trees.py assumes 10,000 years unless --selectionend is specified
     [slim_min_clade_size_in_percent], #  clade size in percent
-    [0] # nr replicates
+    [10] # nr replicates
 ))
 params = neutral_params + autosome_params + sweep_params
-
-
-## ADD 'episode' TO SIMULATIONS AND REMEMBER --selectionend  #####################
 
 
 # import pprint
@@ -1755,34 +1851,68 @@ for chrom, demog_name, size_reduction, rec_rate_per_gen, \
 
     demog = demographies[demog_name]
 
-#    assert chrom == 'X' # we assume X chromosome below
+
     
-#    x_auto_ratio = size_reduction * 3/4
-    
-    if chrom == 'X':
-        # SLiM needs a rate for when recombination can physically occur (i.e. in the female
-        # between the Xs). To get that from the sex averated recombination rate, we need to
-        # account for hte fact that only 2/3 of X chromosomes have the oportunity to combine 
-        # in each generation (assuming even sex ratios).
-        meiosis_rec_rate =  rec_rate_per_gen * 3 / 2
+    # if chrom == 'X':
+    #     # SLiM needs a rate for when recombination can physically occur (i.e. in the female
+    #     # between the Xs). To get that from the sex averated recombination rate, we need to
+    #     # account for hte fact that only 2/3 of X chromosomes have the oportunity to combine 
+    #     # in each generation (assuming even sex ratios).
+    #     meiosis_rec_rate =  rec_rate_per_gen * 3 / 2
             
+    #     mut_per_year = analysis_globals.mut_per_year
+
+    # elif chrom == 'A':
+    #     mut_per_year = analysis_globals.auto_mut_per_year        
+    # else:
+    #     assert 0
+
+
+#####################
+
+    if chrom == 'X':
         mut_per_year = analysis_globals.mut_per_year
     elif chrom == 'A':
         mut_per_year = analysis_globals.auto_mut_per_year        
     else:
         assert 0
-            
-    id_str = '{}_{}_{}_{}_{}_{}_{}'.format(demog_name,
-    round(size_reduction*100), round(rec_rate_per_gen * 1e12),
-    chrom, sweep_type, sweep_start, int(selcoef*100))
+
+    if type(rec_rate_per_gen) is str:
+        # refers to a recombination map file. this map is already scaled with 3/2
+        assert chrom == 'X', "Recombination map only for X"
+
+        meiosis_rec_rate = None
+        recombination_map_file = rec_rate_per_gen
+        rec_tag = 'recmap_'+modpath(rec_rate_per_gen, suffix='', parent='') # should be an integer string
+
+    else:
+        recombination_map_file = None
+        if chrom == 'X':
+            # SLiM needs a rate for when recombination can physically occur (i.e. in the female
+            # between the Xs). To get that from the sex averated recombination rate, we need to
+            # account for hte fact that only 2/3 of X chromosomes have the oportunity to combine 
+            # in each generation (assuming even sex ratios).
+            meiosis_rec_rate =  rec_rate_per_gen * 3 / 2
+        elif chrom == 'A':
+            meiosis_rec_rate =  rec_rate_per_gen
+        else:
+            assert 0
+
+        rec_tag = f'constrec_{round(rec_rate_per_gen * 1e12)}'
+
+
+
+#####################
+
+    id_str = '{}_{}_{}_{}_{}_{}_{}'.format(
+        demog_name, round(size_reduction*100), rec_tag,
+        chrom, sweep_type, sweep_start, int(selcoef*100))
 
     slim_output_dir = os.path.join(simulations_dir, id_str.replace('_', '/'))
     if not os.path.exists(slim_output_dir): os.makedirs(slim_output_dir)
 
     # replicates
     for i in range(nr_replicates):
-
-
 
         sim_output_prefix = os.path.join(slim_output_dir, "{}_{}".format(id_str, i))
         slim_tree_file = sim_output_prefix + '.trees'
@@ -1804,12 +1934,25 @@ for chrom, demog_name, size_reduction, rec_rate_per_gen, \
             slim_freq_file = sim_output_prefix + '.vcf.frq'
             slim_freq_files.append(slim_freq_file)
 
+        # # run the simulation and compute pairwise differences
+        # gwf.target_from_template("{}_{}_slim".format(id_str, i),
+        #     slim_sim(selcoef, analysis_globals.gen_time, 
+        #     '{:.12f}'.format(mut_per_year), 
+        #     meiosis_rec_rate,
+        #     nr_non_africans,
+        #     sweep_type, sweep_start, demog, 
+        #     chrom, size_reduction, 
+        #     total_sim_generations,
+        #     slim_tree_file, slim_dist_file, slim_sites_file, 
+        #     slim_vcf_file, slim_geno_vcf_file, 
+        #     compute_ld_and_freqs=chrom=='A'))
+
         # run the simulation and compute pairwise differences
         gwf.target_from_template("{}_{}_slim".format(id_str, i),
             slim_sim(selcoef, analysis_globals.gen_time, 
             '{:.12f}'.format(mut_per_year), 
-            meiosis_rec_rate,
-            nr_non_africans,
+            meiosis_rec_rate, recombination_map_file,
+            sim_sample_size,
             sweep_type, sweep_start, demog, 
             chrom, size_reduction, 
             total_sim_generations,
@@ -1843,14 +1986,15 @@ for chrom, demog_name, size_reduction, rec_rate_per_gen, \
         if not os.path.exists(sweep_data_dir):
             os.makedirs(sweep_data_dir)
 
-        sweep_data_file = modpath("clique_data_{}_{}%.hdf".format(pwdist_cutoff, min_sweep_clade_percent), 
-                                                        parent=sweep_data_dir)                                                  
+        for clique_size in min_sweep_clade_percent:
+            sweep_data_file = modpath("clique_data_{}_{}%.hdf".format(pwdist_cutoff, clique_size), 
+                                                            parent=sweep_data_dir)                                                  
 
-        gwf.target_from_template(id_str+'_{}_{:f}_{}'.format(i, pwdist_cutoff, min_sweep_clade_percent),
-                                 clique_data(slim_dist_twice_file, sweep_data_file, 
-                                            min_sweep_clade_percent, pwdist_cutoff ))
+            gwf.target_from_template(id_str+'_{}_{:f}_{}'.format(i, pwdist_cutoff, clique_size),
+                                     clique_data(slim_dist_twice_file, sweep_data_file, 
+                                                clique_size, pwdist_cutoff ))
 
-        sweep_data_files.append(sweep_data_file)
+            sweep_data_files.append(sweep_data_file)
 
 #################################################################################
 # compute prop swept for all slim sweep data in a file that includes simulation info
