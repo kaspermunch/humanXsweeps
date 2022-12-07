@@ -13,8 +13,34 @@ import time
 import psutil
 process = psutil.Process(os.getpid())
 
+initialization_with_rec_map = r'''
+initialize() {
+	initializeTreeSeq();
+	initializeMutationRate(0);
+	initializeMutationType("m1", 0.5, "f", 0.0);
+	initializeMutationType("m2", 1.0, "f", SEL_COEF);        // introduced
+	initializeGenomicElementType("g1", m1, 1.0);
+	initializeGenomicElement(g1, 0, 10e6-1);
 
-initialization = r'''
+	lines = readFile("REC_MAP_FILE");
+	rates = NULL;
+	ends = NULL;
+	for (line in lines)
+	{
+		components = strsplit(line, "\t");
+		ends = c(ends, asInteger(components[0]));
+		rates = c(rates, asFloat(components[1]));
+	}
+	ends = c(ends[1:(size(ends)-1)] - 2, 10e6-1);
+	rates = rates * 1e-8;
+	initializeRecombinationRate(rates, ends);
+
+	initializeSex("CHROM");
+}
+'''
+
+
+initialization_with_constant_rec_rate = r'''
 initialize() {
 	initializeTreeSeq();
 	initializeMutationRate(0);
@@ -209,6 +235,7 @@ parser.add_argument("--window", type=int)
 parser.add_argument("--samples", type=int)
 parser.add_argument("--mutationrate", type=float)
 parser.add_argument("--recrate", type=float)
+parser.add_argument("--recmap", type=str)
 parser.add_argument("--generationtime", type=int)
 parser.add_argument("--sweep", type=str, choices=['partial', 'complete', 'nosweep', 'episode'])
 parser.add_argument("--sweepstart", type=int)
@@ -228,17 +255,30 @@ parser.add_argument("vcf_file", type=str)
 parser.add_argument("vcf_geno_file", type=str)
 args = parser.parse_args()
 
+
+if args.sweep == 'episode' and args.selectionend is None:
+    # if selectionend is not specified we assume episide is 10,000 years:
+    args.selectionend = args.sweepstart + int(10000/args.generationtime)
+
+    
 window_size = args.window
 
 # slim needs output file to be absolute
 if not os.path.isabs(args.trees_file):
     args.trees_file = os.path.abspath(args.trees_file)
 
+assert bool(args.recrate) != bool(args.recmap), "Give either recmap or recrate"
 # initialization
-slurm_script = (initialization.replace('SEL_COEF', str(args.selcoef))
-							  .replace('CHROM', args.chrom)
-							  .replace('REC_RATE', str(args.recrate))
-				)
+if args.recmap:
+	slurm_script = (initialization_with_rec_map.replace('SEL_COEF', str(args.selcoef))
+								.replace('CHROM', args.chrom)
+								.replace('REC_MAP_FILE', str(args.recmap))
+					)
+else:
+	slurm_script = (initialization_with_constant_rec_rate.replace('SEL_COEF', str(args.selcoef))
+								.replace('CHROM', args.chrom)
+								.replace('REC_RATE', str(args.recrate))
+					)
 
 # end of simulation
 slurm_script += finish.replace('TOTAL_GEN', str(args.totalgenerations)).replace('OUTPUT_FILE', str(args.trees_file))

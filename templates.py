@@ -864,9 +864,16 @@ def compute_tree_stats(input_table_file, output_hdf_file, component_hdf_file, co
 
 
 
-def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, sweep_start, demography,
+def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, rec_map, samples, sweep_type, sweep_start, demography,
  chrom, reduction, total_sim_generations, slim_tree_file, slim_dist_file, slim_sites_file, 
  slim_vcf_file, slim_vcf_geno_file, compute_ld_and_freqs=False):
+
+    assert bool(rec_rate is None) != bool(rec_map is None)
+
+    if rec_rate is not None:
+        rec_option = f'--recrate {rec_rate}'
+    else:
+        rec_option = f'--recmap {rec_map}'
 
     if compute_ld_and_freqs:
         ld_and_freq_cmds = """
@@ -874,7 +881,7 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
         vcftools --vcf {vcf_geno_output} --out {vcf_geno_output} --geno-r2 --min-r2 0.01 --ld-window-bp 500000
         vcftools --vcf {vcf_output} --out {vcf_output} --freq2 --derived
         """.format(vcf_output=slim_vcf_file, vcf_geno_output=slim_vcf_geno_file)
-        ld_and_freq_out_files = [slim_vcf_file+'.frq', slim_vcf_file+'.hap.ld', slim_vcf_file+'.geno.ld']
+        ld_and_freq_out_files = [slim_vcf_file+'.frq', slim_vcf_file+'.hap.ld', slim_vcf_geno_file+'.geno.ld']
     else:
         ld_and_freq_cmds = ''
         ld_and_freq_out_files = []
@@ -889,7 +896,8 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
     conda activate simons
     python scripts/slim_trees.py --selcoef {selcoef} --samples {samples} \
         --window 100000 --generationtime {gen_time} \
-        --mutationrate {mut_per_year} --recrate {rec_rate} \
+        --mutationrate {mut_per_year} \
+        {rec_option} \
         --sweep {sweep_type} --sweepstart {sweep_start} \
         --demography {demography} \
         --chrom {chrom} --size-reduction {reduction} \
@@ -899,7 +907,9 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
     {ld_and_freq_cmds}
 
     """.format(selcoef=selcoef, gen_time=gen_time, 
-            mut_per_year=mut_per_year, rec_rate=rec_rate,
+            mut_per_year=mut_per_year, 
+            #rec_rate=rec_rate,
+            rec_option=rec_option,
             samples=samples, sweep_type=sweep_type, sweep_start=sweep_start, 
             total_sim_generations=total_sim_generations,
             demography=' '.join("{}:{}".format(*pair) for pair in demography),
@@ -910,7 +920,11 @@ def slim_sim(selcoef, gen_time, mut_per_year, rec_rate, samples, sweep_type, swe
             ld_and_freq_cmds=ld_and_freq_cmds,
             vcf_output=slim_vcf_file, vcf_geno_output=slim_vcf_geno_file)
 
-    return [], [slim_tree_file, slim_dist_file, slim_sites_file, slim_vcf_file] + ld_and_freq_out_files, options, spec
+    input_files = []
+    if rec_map is not None:
+        input_files += [rec_map]
+    output_files = [slim_tree_file, slim_dist_file, slim_sites_file, slim_vcf_file] + ld_and_freq_out_files
+    return input_files, output_files, options, spec
 
 
 def slim_dist_twice(dist_file, dist_twice_file):

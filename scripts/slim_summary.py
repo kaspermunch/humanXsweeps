@@ -43,14 +43,15 @@ for dir_path in args.sweep_data_dir.iterdir():
         continue
 
     #sweep_type, pop_size, bottle_start, bottle_end, bottle_pop_size, sweep_start, int(selcoef*100), replication
-    simulation, selection_percent, replication =  dir_path.name.rsplit('_', maxsplit=2)
+#    simulation, selection_percent, replication =  dir_path.name.rsplit('_', maxsplit=2)
 
 
-    demography, size_reduction, rec_rate_per_gen, chrom, sweep_type, sweep_start, selcoef, replication = \
+    demography, size_reduction, rec_mode, rec_val, chrom, sweep_type, sweep_start, selcoef, replication = \
             dir_path.name.split('_')
 
     size_reduction = float(size_reduction) / 100
-    rec_rate_per_gen = float(rec_rate_per_gen) / 1e12
+    # rec_rate_per_gen = float(rec_rate_per_gen) / 1e12
+    rec_val = float(rec_val) / 1e12
     sweep_start = int(sweep_start)
     selcoef = float(selcoef) / 100
     replication = int(replication)
@@ -61,7 +62,7 @@ for dir_path in args.sweep_data_dir.iterdir():
             
         for file_path in sub_dir_path.glob('clique_data*.hdf'):
             
-            min_clade_percent = re.search(r'(\d+)%.hdf', file_path.name).group(1)
+            min_clade_percent = int(re.search(r'(\d+)%.hdf', file_path.name).group(1))
          
             sweep_data = pandas.read_hdf(str(file_path))
 
@@ -76,7 +77,8 @@ for dir_path in args.sweep_data_dir.iterdir():
             df['demography'] = demography
             df['chrom'] = chrom
             df['size_reduction'] = size_reduction
-            df['rec_rate_per_gen'] = rec_rate_per_gen
+            df['rec_mode'] = rec_mode
+            df['rec_val'] = rec_val
             df['sweep_start'] = sweep_start
             df['sweep_type'] = sweep_type
             df['selcoef'] = selcoef

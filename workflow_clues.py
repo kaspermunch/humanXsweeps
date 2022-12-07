@@ -126,7 +126,7 @@ def make_transition_matrices_from_argweaver(selection_coef, arg_weaver_log_file)
     ORIGDIR=`pwd`
     cd {path}
 
-    python $ORIGDIR/clues/make_transition_matrices_from_argweaver.py 10000 {selection_coef} \
+    python $ORIGDIR/clues-v0/make_transition_matrices_from_argweaver.py 10000 {selection_coef} \
         $ORIGDIR/{arg_weaver_log_file} {output_file} --breaks 0.95 0.025 --debug    
     '''
     return AnonymousTarget(inputs=inputs, outputs=outputs, options=options, spec=spec)
@@ -149,7 +149,7 @@ def clues(bed_file, sites_file, clues_output_file, cond_trans_matrix_file, snp_p
     mkdir -p {os.path.dirname(clues_output_file)}
     arg-summarize -a {bed_file} -r {chrom}:{snp_pos}-{snp_pos} -l {log_file} -E > {trees_file} \
     && \
-    python ./clues/clues.py {trees_file} {cond_trans_matrix_file} {sites_file} {derived_freq} --posn {snp_pos} \
+    python ./clues-v0/clues.py {trees_file} {cond_trans_matrix_file} {sites_file} {derived_freq} --posn {snp_pos} \
         --derivedAllele {derived_allele} --noAncientHap --approx 1000 --thin 10 --burnin 100 --output {clues_output_base_name} --debug
     '''
 
@@ -198,7 +198,7 @@ arg_sample_times_file = 'data/tennessen_times_fine.txt'
 arg_sample_popsize_file = 'data/tennessen_popsize_fine.txt'
 decode_recomb_map_file = 'data/decode_hg38_sexavg_per_gen_lifted_tohg19_chrX.tsv'
 
-freq_data_file = 'steps/clues/derived_freq_info_WestEurasia.h5'
+freq_data_file = 'steps/clues-v0/derived_freq_info_WestEurasia.h5'
 
 #individuals, populations, regions = simons_meta_data.get_meta_data()
 

@@ -8,28 +8,8 @@ import pandas as pd
 import itertools
 from collections import defaultdict
 from math import exp
-from multiprocessing import Pool
-
-script, output_file_name = sys.argv
-
-np.random.seed(7)
-
-# african X/A ratio is 0.65 but is further reduced inside regions (lower african X pi in regions):
-nonafr_x_auto_ratios = [0.65 * x for x in [1, 0.71]] # outside and inside regions
-
-# mean per generation recombination rate in regions (new decode map):
-sexavg_rec_rates_per_gen = [0.46e-8, # mean in regions
-                            1.16e-8] # global for chrX
-autosomal_bottle_N = 3000
-
-# parameters for computation
-haploid_N = [int(2 * autosomal_bottle_N * x) for x in nonafr_x_auto_ratios]
-target_freqs = np.linspace(0.1, 1, 10)
-g = [int(10000 / 29), int(15000 / 29)]
-r = sexavg_rec_rates_per_gen
-L = [5e5, 1e6]
-n_samples = 10000
-parameters = list(itertools.product(haploid_N, target_freqs, g, r, L))
+from multiprocessing import Pool, cpu_count
+import argparse
 
 def get_gens_to_freq(N, target_freqs):
     trajectory = []
@@ -49,30 +29,84 @@ def get_gens_to_freq(N, target_freqs):
     return results
 
 # compute nr of gens until one allele reaches frequency f in a population of size N
-gens_freq_reached = defaultdict(list)
-for N in haploid_N:
-    if 'SLURM_CPUS_PER_TASK' in os.environ:
-        with Pool(int(os.environ['SLURM_CPUS_PER_TASK'])) as p:
-            results = list(p.starmap(get_gens_to_freq, [(N, target_freqs)]*n_samples))
-    else:
-        results = list(itertools.starmap(get_gens_to_freq, [(N, target_freqs)]*n_samples))
+# evenly spaced target freqs:
 
-    for batch in results:
-        for N, f, nr_gens in batch:
-            gens_freq_reached[(N, f)].append(nr_gens) 
+def compute(parameters, target_freqs, haploid_N, output_file_name):
 
-records = []
-for N, f, g, r, L in parameters:
-    total_prob = 0
-    total_freqs_reached = 0
-    for nr_gens in gens_freq_reached[(N, f)]:
-        if nr_gens < g:
-            total_freqs_reached += 1
-            total_prob += exp(-r*L*nr_gens) + (1-exp(-r*L*nr_gens))/2 
+    
+    gens_freq_reached = defaultdict(list)
+    for N in haploid_N:
+        if 'SLURM_CPUS_PER_TASK' in os.environ:
+            with Pool(int(os.environ['SLURM_CPUS_PER_TASK'])) as p:
+                results = list(p.starmap(get_gens_to_freq, [(N, target_freqs)]*n_samples))
+        # else:
+        #     with Pool(cpu_count()) as p:
+        #         results = list(p.starmap(get_gens_to_freq, [(N, target_freqs)]*n_samples))
+        else:
+            results = list(itertools.starmap(get_gens_to_freq, [(N, target_freqs)]*n_samples))
 
-    p = total_prob / n_samples
-    records.append((N, f, g, r, L, p, total_freqs_reached, n_samples))
+        for batch in results:
+            for N, f, nr_gens in batch:
+                gens_freq_reached[(N, f)].append(nr_gens) 
 
-df = pd.DataFrame.from_records(records, columns=['haploid_N', 'freq', 'max_gens', 'rec', 'length', 'prob', 'tot_reached', 'n_samples'])
+    records = []
+    for N, f, g, r, L in parameters:
+        total_prob = 0
+        total_freqs_reached = 0
+        for nr_gens in gens_freq_reached[(N, f)]:
+            if nr_gens < g:
+                total_freqs_reached += 1
+                total_prob += exp(-r*L*nr_gens) + (1-exp(-r*L*nr_gens))/2 
 
-df.to_hdf(output_file_name, 'df', format='table', mode='w')
+        p = total_prob / n_samples
+        records.append((N, f, g, r, L, p, total_freqs_reached, n_samples))
+    
+    df = pd.DataFrame.from_records(records, columns=['haploid_N', 'freq', 'max_gens', 'rec', 'length', 'prob', 'tot_reached', 'n_samples'])
+
+    df.to_hdf(output_file_name, 'df', format='table', mode='w')
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--years", dest="years", type=int, action='append')
+    parser.add_argument('output_file_name_spaced_freqs', type=str, help='')
+    parser.add_argument('output_file_name_ech_freqs', type=str, help='')
+    args = parser.parse_args()
+
+#    script, output_file_name_spaced_freqs, output_file_name_ech_freqs = sys.argv
+
+    np.random.seed(7)
+
+    # african X/A ratio is 0.65 but is further reduced inside regions (lower african X pi in regions):
+    # nonafr_x_auto_ratios = [0.65 * x for x in [1, 0.71]] # outside and inside regions
+    nonafr_x_auto_ratios = [0.65, 0.51] # African and non-African
+
+    # mean per generation recombination rate in regions (new decode map):
+    # sexavg_rec_rates_per_gen = [0.46e-8, # mean in regions
+    #                             1.16e-8] # global for chrX
+    # sexavg_rec_rates_per_gen = [1.16e-8] # global for chrX
+    sexavg_rec_rates_per_gen = [0.77e-8] # sex-avaraged global for chrX (2/3*1.16e-8)
+    
+    autosomal_bottle_N = [3000, 1500]
+
+    # parameters for computation
+    haploid_N = [int(2*x*y) for (x, y) in itertools.product(autosomal_bottle_N, nonafr_x_auto_ratios)]
+    #haploid_N = [int(2 * autosomal_bottle_N * x) for x in nonafr_x_auto_ratios]
+    spaced_target_freqs = np.linspace(0.05, 1, 20)
+    g = [int(x / 29) for x in args.years]
+    # g = [int(10000 / 29), int(15000 / 29)]
+    r = sexavg_rec_rates_per_gen
+    # L = [5e5, 1e6]
+    # n_samples = 1000000
+    L = [5e5]
+    n_samples = 500000
+
+    ech_target_freqs =  pd.read_hdf('results/extended_peak_regions_5e-05_25%_90%.hdf').prop_swept
+
+
+    spaced_parameters = list(itertools.product(haploid_N, spaced_target_freqs, g, r, L))
+    ech_parameters = list(itertools.product(haploid_N, ech_target_freqs, g, r, L))
+
+    compute(ech_parameters, ech_target_freqs, haploid_N, args.output_file_name_ech_freqs)
+    compute(spaced_parameters, spaced_target_freqs, haploid_N, args.output_file_name_spaced_freqs)
+
