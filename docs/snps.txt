@@ -1,6 +1,0 @@
-
-# Extrct x chromosome SNPs using ctools 
-
-In scripts:
-
-	bash all_x_poly.sh

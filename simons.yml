@@ -1,12 +1,7 @@
-name: simons_updated
+name: simons
 channels:
   - defaults
   - conda-forge
-  - anaconda
-  - gwforg
-  - kaspermunch
-  - genomedk
-  - bioconda
 dependencies:
   - cartopy
   - pytables
@@ -14,6 +9,7 @@ dependencies:
   - ete3
   - nbconvert
   - numpy
+  - gwf-utilization
   - mygene
   - pyfaidx
   - matplotlib
@@ -39,7 +35,7 @@ dependencies:
   - pylint
   - bitarray
   - chromwindow
-  - geneinfo
+  - geneinfo=1.2.5
   - argweaver
   - tabix
   - future
@@ -66,4 +62,4 @@ dependencies:
   - openpyxl
   - genominterv
   - ipympl
-prefix: /home/kmt/anaconda3/envs/simons_updated
+prefix: /home/kmt/anaconda3/envs/simons

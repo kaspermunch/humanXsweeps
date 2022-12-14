@@ -2,6 +2,8 @@ name: simons_jupyter
 channels:
   - defaults
   - conda-forge
+  - bioconda
+  - kaspermunch
 dependencies:
   - scipy
   - statsmodels
@@ -20,6 +22,7 @@ dependencies:
   - seaborn
   - pandas
   - chromwindow
+  - ChromosomeWindows
   - ipympl
   - pyfaidx
   - cartopy
