@@ -1,0 +1,33 @@
+name: simons_jupyter
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - scipy
+  - statsmodels
+  - scikit-learn
+  - pyslim
+  - networkx
+  - msprime
+  - pytables
+  - horizonplot
+  - requests
+  - jupyterlab=3
+  - geneinfo=3.1
+  - dask
+  - biopython
+  - genominterv
+  - seaborn
+  - pandas
+  - chromwindow
+  - ipympl
+  - pyfaidx
+  - cartopy
+  - wget
+  - ete3
+  - h5py
+  - astropy
+  - anndata
+  - scanpy
+  - mscorefonts
+prefix: /home/kmt/anaconda3/envs/simons_jupyter
