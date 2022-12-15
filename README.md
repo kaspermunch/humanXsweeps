@@ -1,12 +1,10 @@
 # humanXsweeps
 
-Code for analysis of X chromosomes from the Simons Diversity Panel
-
-Create directory structure for analysis:
+Code for analysis of X chromosomes from the Simons Diversity Panel. Once cloned the repository folder needs to be renamed to `kmt` to fit file paths used in the workflows. Also the following subfolders must be created in the repository folder:
 
     mkdir steps results figures 
 
-## Environments
+## Conda environments
 
 ### simons
 
@@ -56,7 +54,7 @@ Additional analysis of 1000 genomes
 
     gwf -f workflow_1000genomes.py run
 
-## Data analysis using jupyter notebooks
+## Data analysis and visualization using jupyter notebooks
 
 All notebooks are listed in the folder notebooks. They should be run in the order they are numbered. 
 
