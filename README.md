@@ -1,8 +1,10 @@
-# Code used the for the Cell Genomics paper
+# humanXsweeps
 
-**Extraordinary selection on the human X chromosome associated with archaic admixture**
+Code used the for the Cell Genomics paper:
 
-Analysis of X chromosomes from the Simons Diversity Panel. Once cloned the repository folder needs to be renamed to `kmt` to fit file paths used in the workflows. Also the following subfolders must be created in the repository folder:
+**"Extraordinary selection on the human X chromosome associated with archaic admixture"**
+
+Once cloned the repository folder needs to be renamed to `kmt` to fit file paths used in the workflows. Also the following subfolders must be created in the repository folder:
 
     mkdir steps results figures 
 
