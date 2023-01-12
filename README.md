@@ -1,6 +1,8 @@
-# humanXsweeps
+# Code used the for the Cell Genomics paper
 
-Code for analysis of X chromosomes from the Simons Diversity Panel. Once cloned the repository folder needs to be renamed to `kmt` to fit file paths used in the workflows. Also the following subfolders must be created in the repository folder:
+**Extraordinary selection on the human X chromosome associated with archaic admixture**
+
+Analysis of X chromosomes from the Simons Diversity Panel. Once cloned the repository folder needs to be renamed to `kmt` to fit file paths used in the workflows. Also the following subfolders must be created in the repository folder:
 
     mkdir steps results figures 
 
@@ -56,6 +58,4 @@ Additional analysis of 1000 genomes
 
 ## Data analysis and visualization using jupyter notebooks
 
-All notebooks are listed in the folder notebooks. They should be run in the order they are numbered. 
-
-For easy use of jupyter analysis on a slurm computing cluster use [slurm_jupyter](https://github.com/kaspermunch/slurm-jupyter).
+All notebooks are listed in the folder notebooks. They should be run in the order they are numbered. Some of them require a *lot* of memory. For easy use of jupyter analysis on a slurm computing cluster use [slurm_jupyter](https://github.com/kaspermunch/slurm-jupyter).
