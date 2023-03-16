@@ -112,7 +112,6 @@ trash/
 
 
 # symlinks to ignore
-results
 figures
 plots
 data
